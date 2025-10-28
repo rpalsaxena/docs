@@ -377,7 +377,7 @@ Second:
     ```
     and specifying `"cache_control": {"type": "ephemeral", "ttl": "1h"}`.
 
-    Details of cached token counts will be included on the `InputTokenDetails` of response's `usage_metadata`:
+    Details of cached token counts will be included on the [`InputTokenDetails`](https://reference.langchain.com/python/langchain/messages/#langchain.messages.InputTokenDetails) of response's [`usage_metadata`](https://reference.langchain.com/python/langchain/messages/#langchain.messages.UsageMetadata):
 
     ```python
     response = model.invoke(messages)

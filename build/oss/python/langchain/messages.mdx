@@ -270,7 +270,7 @@ Other structured data, such as reasoning or citations, can also appear in messag
 
 #### Token usage
 
-An [`AIMessage`](https://reference.langchain.com/python/langchain/messages/#langchain.messages.AIMessage) can hold token counts and other usage metadata in its [`usage_metadata`](https://reference.langchain.com/python/langchain/messages/#langchain.messages.AIMessage.usage_metadata) field:
+An [`AIMessage`](https://reference.langchain.com/python/langchain/messages/#langchain.messages.AIMessage) can hold token counts and other usage metadata in its [`usage_metadata`](https://reference.langchain.com/python/langchain/messages/#langchain.messages.UsageMetadata) field:
 
 ```python
 from langchain.chat_models import init_chat_model
@@ -291,7 +291,7 @@ response.usage_metadata
 
 
 
-See [`UsageMetadata`](https://reference.langchain.com/python/langchain/messages/#langchain.messages.AIMessage.usage_metadata) for details.
+See [`UsageMetadata`](https://reference.langchain.com/python/langchain/messages/#langchain.messages.UsageMetadata) for details.
 
 #### Streaming and chunks
 
