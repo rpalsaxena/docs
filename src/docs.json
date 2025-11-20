@@ -412,7 +412,8 @@
                         {
                           "group": "Releases",
                           "pages": [
-                            "oss/python/releases/langchain-v1"
+                            "oss/python/releases/langchain-v1",
+                            "oss/python/releases/langchain-v1-1"
                           ]
                         },
                         {
@@ -782,7 +783,8 @@
                         {
                           "group": "Releases",
                           "pages": [
-                            "oss/javascript/releases/langchain-v1"
+                            "oss/javascript/releases/langchain-v1",
+                            "oss/javascript/releases/langchain-v1-1"
                           ]
                         },
                         {

@@ -1,0 +1,62 @@
+---
+title: What's new in v1.1
+sidebarTitle: v1.1 Release notes
+---
+
+**LangChain v1.1 focuses on improving agent reliability and flexibility.** This release introduces model profiles, new middleware capabilities, and enhanced type safety for custom middleware implementations.
+
+To upgrade,
+
+<CodeGroup>
+```bash pip
+pip install -U langchain
+```
+```bash uv
+uv add langchain
+```
+</CodeGroup>
+
+## Model profiles
+
+Model profiles allow you to configure how agents interact with specific models by defining capabilities, context handling, and structured output behavior.
+
+### Summarization middleware
+
+### Structured output for agents
+
+## Model retry middleware
+
+## Misc
+
+### New middleware docs
+
+### Type safety improvements for custom middlewares
+
+## Reporting issues
+
+Please report any issues discovered with v1.1 on [GitHub](https://github.com/langchain-ai/langchain/issues) using the [`'v1.1'` label](https://github.com/langchain-ai/langchain/issues?q=state%3Aopen%20label%3Av1.1).
+
+## Additional resources
+
+<CardGroup cols={3}>
+    <Card title="Agents" icon="robot" href="/oss/langchain/agents" arrow>
+        Learn about building agents with LangChain
+    </Card>
+    <Card title="Middleware" icon="layer-group" href="/oss/langchain/middleware/overview" arrow>
+        Deep dive into middleware concepts
+    </Card>
+    <Card title="Tools" icon="wrench" href="/oss/langchain/tools" arrow>
+        Working with tools in agents
+    </Card>
+    <Card title="Migration guide" icon="arrow-right-arrow-left" href="/oss/migrate/langchain-v1" arrow>
+        How to migrate to LangChain v1
+    </Card>
+    <Card title="GitHub" icon="github" href="https://github.com/langchain-ai/langchain">
+        Report issues or contribute
+    </Card>
+</CardGroup>
+
+## See also
+
+- [Versioning](/oss/python/versioning) - Understanding version numbers
+- [Release policy](/oss/python/release-policy) - Detailed release policies
