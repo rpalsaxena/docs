@@ -3,7 +3,7 @@ title: What's new in v1.1
 sidebarTitle: v1.1 Release notes
 ---
 
-**LangChain v1.1 focuses on improving agent reliability and flexibility.** This release introduces model profiles, new middleware capabilities, and enhanced type safety for custom middleware implementations.
+**LangChain v1.1 focuses on improving agent reliability and flexibility.** This release introduces model profiles for better model capability awareness, new middleware capabilities for retrying model calls and content moderation, improved system message handling, and enhanced compatibility with Zod v4.
 
 To upgrade,
 
@@ -24,19 +24,87 @@ bun add @langchain/core @langchain/langgraph
 
 ## Model profiles
 
-Model profiles allow you to configure how agents interact with specific models by defining capabilities, context handling, and structured output behavior.
+Model profiles provide a standardized way to understand model capabilities and constraints. Every chat model now exposes a `.profile` getter that returns information about context window size, structured output support, and other model-specific characteristics.
 
-### Summarization middleware
+```typescript
+import { initChatModel } from "langchain";
 
-### Structured output for agents
+const model = await initChatModel("gpt-4o");
+const profile = model.profile;
+
+console.log(profile.maxTokens); // Maximum context window size
+console.log(profile.supportsStructuredOutput); // Native structured output support
+```
+
+Profiles are automatically generated from [models.dev](https://models.dev) and enable middleware like summarization to use accurate token limits, while `createAgent` can automatically detect native structured output support.
+
+## System message improvements
+
+You can now pass a `SystemMessage` instance directly to the `systemPrompt` parameter when creating agents, and use the new `concat` method to extend system messages. This enables advanced features like cache control (e.g., Anthropic's ephemeral cache) and structured content blocks.
+
+```typescript
+import { createAgent, SystemMessage } from "langchain";
+
+// SystemMessage instance with cache control
+const agent = createAgent({
+  model: "anthropic:claude-3-5-sonnet",
+  tools: [myTool],
+  systemPrompt: new SystemMessage({
+    content: [
+      {
+        type: "text",
+        text: "You are a helpful assistant.",
+      },
+      {
+        type: "text",
+        text: "Today's date is 2024-06-01.",
+        cache_control: { type: "ephemeral", ttl: "5m" },
+      },
+    ],
+  }),
+});
+```
+
+When using middleware with `wrapModelCall`, you can modify system prompts using either `systemPrompt` (string) or `systemMessage` (SystemMessage object). See the [custom middleware documentation](/oss/langchain/middleware/custom#working-with-system-messages) for detailed examples and best practices.
 
 ## Model retry middleware
 
-## Misc
+A new `modelRetryMiddleware` automatically retries failed model calls with configurable exponential backoff, improving agent reliability by handling transient model failures gracefully.
 
-### New middleware docs
+```typescript
+import { createAgent, modelRetryMiddleware } from "langchain";
 
-### Type safety improvements for custom middlewares
+const agent = createAgent({
+  model: "gpt-4o",
+  tools: [searchTool, databaseTool],
+  middleware: [
+    modelRetryMiddleware({
+      maxRetries: 3,
+      backoffFactor: 2.0,
+      initialDelayMs: 1000,
+    }),
+  ],
+});
+```
+
+See the [built-in middleware documentation](/oss/langchain/middleware/built-in) for configuration options and detailed examples.
+
+## OpenAI content moderation middleware
+
+A new middleware integrates OpenAI's moderation endpoint to detect and handle unsafe content in agent interactions. This middleware is useful for applications requiring content safety and compliance.
+
+The middleware can check content at multiple stages:
+- **Input checking**: User messages before model calls
+- **Output checking**: AI messages after model calls
+- **Tool results**: Tool outputs before model calls
+
+You can configure how violations are handled with options like ending execution, raising errors, or replacing flagged content. See the [middleware documentation](/oss/langchain/middleware/built-in#content-moderation) for detailed usage examples.
+
+## Compatibility improvements
+
+### Zod v4 support
+
+LangChain.js now supports Zod v4, ensuring seamless integration with the latest version of the schema validation library. This update maintains backward compatibility while enabling you to use the latest Zod features for structured output and tool schemas.
 
 ## Reporting issues
 
