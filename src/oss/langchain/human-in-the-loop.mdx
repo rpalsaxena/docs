@@ -39,6 +39,7 @@ You configure it with a mapping of tool actions to the decision types that are a
 :::python
 ```python
 from langchain.agents import create_agent
+from langchain_core.messages import HumanMessage
 from langchain.agents.middleware import HumanInTheLoopMiddleware # [!code highlight]
 from langgraph.checkpoint.memory import InMemorySaver # [!code highlight]
 
