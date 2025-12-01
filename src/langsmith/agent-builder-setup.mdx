@@ -20,10 +20,6 @@ Agent Builder supports two visibility modes:
 - Tool auth: both modes support OAuth and secret‑based tools. Personal agents typically use user tokens; workspace agents can use workspace‑managed app auth where appropriate.
 - Secrets: use workspace secrets for API keys in both modes. Avoid putting credentials in prompts or code.
 
-<Tip>
-If you use custom authentication, ensure your auth middleware distinguishes user identity from workspace context and passes both as needed. This lets team agents act on behalf of the caller while still respecting workspace access controls.
-</Tip>
-
 ## How to add workspace secrets
 
 In the [LangSmith UI](https://smith.langchain.com), ensure that your Anthropic API key is set as a [workspace secret](/langsmith/administration-overview#workspace-secrets).
