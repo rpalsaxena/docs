@@ -250,8 +250,8 @@ Let's walk through each step:
 
 
 ```ts
-import { createAgent, tool, initChatModel } from "langchain";
-import { MemorySaver, type Runtime } from "@langchain/langgraph";
+import { createAgent, tool, initChatModel, type ToolRuntime } from "langchain";
+import { MemorySaver } from "@langchain/langgraph";
 import * as z from "zod";
 
 // Define system prompt
