@@ -6,13 +6,6 @@ title: "Tools and toolkits"
 
 A toolkit is a collection of tools meant to be used together.
 
-<Note>
-
-If you'd like to write your own tool, see [this how-to](/docs/how_to/custom_tools/).
-If you'd like to contribute an integration, see [Contributing integrations](/oss/contributing#add-a-new-integration).
-
-</Note>
-
 ## Search
 
 The following table shows tools that execute online searches in some shape or form:
@@ -27,6 +20,7 @@ The following table shows tools that execute online searches in some shape or fo
 | [Google Serper](/oss/integrations/tools/google_serper) | Free | URL, Snippet, Title, Search Rank, Site Links |
 | [Jina Search](/oss/integrations/tools/jina_search) | 1M Response Tokens Free | URL, Snippet, Title, Page Content |
 | [Mojeek Search](/oss/integrations/tools/mojeek_search) | Paid | URL, Snippet, Title |
+| [Parallel Search](/oss/integrations/tools/parallel_search) | Paid | URL, Title, Excerpts |
 | [SearchApi](/oss/integrations/tools/searchapi) | 100 Free Searches on Sign Up | URL, Snippet, Title, Search Rank, Site Links, Authors |
 | [SearxNG Search](/oss/integrations/tools/searx_search) | Free | URL, Snippet, Title, Category |
 | [SerpAPI](/oss/integrations/tools/serpapi) | 100 Free Searches/Month | Answer |
@@ -51,7 +45,7 @@ The following table shows tools that can be used to automate tasks in productivi
 |-------------|---------|
 | [Github Toolkit](/oss/integrations/tools/github) | Free |
 | [Gitlab Toolkit](/oss/integrations/tools/gitlab) | Free for personal project |
-| [Gmail Toolkit](/oss/integrations/tools/gmail) | Free, with limit of 250 quota units per user per second |
+| [Gmail Toolkit](/oss/integrations/tools/google_gmail) | Free, with limit of 250 quota units per user per second |
 | [Infobip Tool](/oss/integrations/tools/infobip) | Free trial, with variable pricing after |
 | [Jira Toolkit](/oss/integrations/tools/jira) | Free, with [rate limits](https://developer.atlassian.com/cloud/jira/platform/rate-limiting/) |
 | [Office365 Toolkit](/oss/integrations/tools/office365) | Free with Office365, includes [rate limits](https://learn.microsoft.com/en-us/graph/throttling-limits) |
@@ -79,7 +73,7 @@ The following table shows tools that can be used to automate tasks in databases:
 | Tool/Toolkit | Allowed Operations |
 |-------------|-------------------|
 | [Cassandra Database Toolkit](/oss/integrations/tools/cassandra_database) | SELECT and schema introspection |
-| [MCP Toolbox](/oss/integrations/tools/toolbox) | Any SQL operation |
+| [MCP Toolbox](/oss/integrations/tools/mcp_toolbox) | Any SQL operation |
 | [SQLDatabase Toolkit](/oss/integrations/tools/sql_database) | Any SQL operation |
 | [Spark SQL Toolkit](/oss/integrations/tools/spark_sql) | Any SQL operation |
 
@@ -90,8 +84,17 @@ The following table shows tools that can be used to execute financial transactio
 | Tool/Toolkit | Pricing | Capabilities |
 |-------------|---------|--------------|
 | [GOAT](/oss/integrations/tools/goat) | Free | Create and receive payments, purchase physical goods, make investments, and more. |
+| [Privy](/oss/integrations/tools/privy) | Free | Create wallets with configurable permissions and execute transactions with speed. |
 
-## All tools
+## Integration Platforms
+
+The following platforms provide access to multiple tools and services through a unified interface:
+
+| Tool/Toolkit | Number of Integrations | Pricing | Key Features |
+|-------------|----------------------|---------|--------------|
+| [Composio](/oss/integrations/tools/composio) | 500+ | Free tier available | OAuth handling, event-driven workflows, multi-user support |
+
+## All tools and toolkits
 
 <Columns cols={3}>
 <Card title="ADS4GPTs" icon="link" href="/oss/integrations/tools/ads4gpts" arrow="true" cta="View guide" />
@@ -110,6 +113,7 @@ The following table shows tools that can be used to execute financial transactio
 <Card title="Shell (bash)" icon="link" href="/oss/integrations/tools/bash" arrow="true" cta="View guide" />
 <Card title="Bearly Code Interpreter" icon="link" href="/oss/integrations/tools/bearly" arrow="true" cta="View guide" />
 <Card title="Bing Search" icon="link" href="/oss/integrations/tools/bing_search" arrow="true" cta="View guide" />
+<Card title="Bodo DataFrames" icon="link" href="/oss/integrations/tools/bodo" arrow="true" cta="View guide" />
 <Card title="Brave Search" icon="link" href="/oss/integrations/tools/brave_search" arrow="true" cta="View guide" />
 <Card title="BrightData Web Scraper API" icon="link" href="/oss/integrations/tools/brightdata-webscraperapi" arrow="true" cta="View guide" />
 <Card title="BrightData SERP" icon="link" href="/oss/integrations/tools/brightdata_serp" arrow="true" cta="View guide" />
@@ -120,12 +124,14 @@ The following table shows tools that can be used to execute financial transactio
 <Card title="ClickUp Toolkit" icon="link" href="/oss/integrations/tools/clickup" arrow="true" cta="View guide" />
 <Card title="Cogniswitch Toolkit" icon="link" href="/oss/integrations/tools/cogniswitch" arrow="true" cta="View guide" />
 <Card title="Compass DeFi Toolkit" icon="link" href="/oss/integrations/tools/compass" arrow="true" cta="View guide" />
+<Card title="Composio" icon="link" href="/oss/integrations/tools/composio" arrow="true" cta="View guide" />
 <Card title="Connery Toolkit" icon="link" href="/oss/integrations/tools/connery" arrow="true" cta="View guide" />
 <Card title="Dall-E Image Generator" icon="link" href="/oss/integrations/tools/dalle_image_generator" arrow="true" cta="View guide" />
 <Card title="Dappier" icon="link" href="/oss/integrations/tools/dappier" arrow="true" cta="View guide" />
 <Card title="Databricks Unity Catalog" icon="link" href="/oss/integrations/tools/databricks" arrow="true" cta="View guide" />
 <Card title="DataForSEO" icon="link" href="/oss/integrations/tools/dataforseo" arrow="true" cta="View guide" />
 <Card title="Dataherald" icon="link" href="/oss/integrations/tools/dataherald" arrow="true" cta="View guide" />
+<Card title="Daytona Data Analysis" icon="link" href="/oss/integrations/tools/daytona_data_analysis" arrow="true" cta="View guide" />
 <Card title="DuckDuckGo Search" icon="link" href="/oss/integrations/tools/ddg" arrow="true" cta="View guide" />
 <Card title="Discord" icon="link" href="/oss/integrations/tools/discord" arrow="true" cta="View guide" />
 <Card title="E2B Data Analysis" icon="link" href="/oss/integrations/tools/e2b_data_analysis" arrow="true" cta="View guide" />
@@ -137,8 +143,9 @@ The following table shows tools that can be used to execute financial transactio
 <Card title="FMP Data" icon="link" href="/oss/integrations/tools/fmp-data" arrow="true" cta="View guide" />
 <Card title="Github Toolkit" icon="link" href="/oss/integrations/tools/github" arrow="true" cta="View guide" />
 <Card title="Gitlab Toolkit" icon="link" href="/oss/integrations/tools/gitlab" arrow="true" cta="View guide" />
-<Card title="Gmail Toolkit" icon="link" href="/oss/integrations/tools/gmail" arrow="true" cta="View guide" />
+<Card title="Gmail Toolkit" icon="link" href="/oss/integrations/tools/google_gmail" arrow="true" cta="View guide" />
 <Card title="GOAT" icon="link" href="/oss/integrations/tools/goat" arrow="true" cta="View guide" />
+<Card title="Privy" icon="link" href="/oss/integrations/tools/privy" arrow="true" cta="View guide" />
 <Card title="Golden Query" icon="link" href="/oss/integrations/tools/golden_query" arrow="true" cta="View guide" />
 <Card title="Google Books" icon="link" href="/oss/integrations/tools/google_books" arrow="true" cta="View guide" />
 <Card title="Google Calendar Toolkit" icon="link" href="/oss/integrations/tools/google_calendar" arrow="true" cta="View guide" />
@@ -160,6 +167,7 @@ The following table shows tools that can be used to execute financial transactio
 <Card title="Hyperbrowser Browser Agent Tools" icon="link" href="/oss/integrations/tools/hyperbrowser_browser_agent_tools" arrow="true" cta="View guide" />
 <Card title="Hyperbrowser Web Scraping Tools" icon="link" href="/oss/integrations/tools/hyperbrowser_web_scraping_tools" arrow="true" cta="View guide" />
 <Card title="IBM watsonx.ai" icon="link" href="/oss/integrations/tools/ibm_watsonx" arrow="true" cta="View guide" />
+<Card title="IBM watsonx.ai (SQL)" icon="link" href="/oss/integrations/tools/ibm_watsonx_sql" arrow="true" cta="View guide" />
 <Card title="IFTTT WebHooks" icon="link" href="/oss/integrations/tools/ifttt" arrow="true" cta="View guide" />
 <Card title="Infobip" icon="link" href="/oss/integrations/tools/infobip" arrow="true" cta="View guide" />
 <Card title="Ionic Shopping Tool" icon="link" href="/oss/integrations/tools/ionic_shopping" arrow="true" cta="View guide" />
@@ -186,7 +194,8 @@ The following table shows tools that can be used to execute financial transactio
 <Card title="Oxylabs" icon="link" href="/oss/integrations/tools/oxylabs" arrow="true" cta="View guide" />
 <Card title="Pandas Dataframe" icon="link" href="/oss/integrations/tools/pandas" arrow="true" cta="View guide" />
 <Card title="Passio NutritionAI" icon="link" href="/oss/integrations/tools/passio_nutrition_ai" arrow="true" cta="View guide" />
-<Card title="PaymanAI" icon="link" href="/oss/integrations/tools/payman-tool" arrow="true" cta="View guide" />
+<Card title="Parallel Extract" icon="link" href="/oss/integrations/tools/parallel_extract" arrow="true" cta="View guide" />
+<Card title="Parallel Search" icon="link" href="/oss/integrations/tools/parallel_search" arrow="true" cta="View guide" />
 <Card title="Permit" icon="link" href="/oss/integrations/tools/permit" arrow="true" cta="View guide" />
 <Card title="PlayWright Browser Toolkit" icon="link" href="/oss/integrations/tools/playwright" arrow="true" cta="View guide" />
 <Card title="Polygon IO Toolkit" icon="link" href="/oss/integrations/tools/polygon" arrow="true" cta="View guide" />
@@ -219,7 +228,7 @@ The following table shows tools that can be used to execute financial transactio
 <Card title="Tavily Extract" icon="link" href="/oss/integrations/tools/tavily_extract" arrow="true" cta="View guide" />
 <Card title="Tavily Search" icon="link" href="/oss/integrations/tools/tavily_search" arrow="true" cta="View guide" />
 <Card title="Tilores" icon="link" href="/oss/integrations/tools/tilores" arrow="true" cta="View guide" />
-<Card title="MCP Toolbox" icon="link" href="/oss/integrations/tools/toolbox" arrow="true" cta="View guide" />
+<Card title="MCP Toolbox" icon="link" href="/oss/integrations/tools/mcp_toolbox" arrow="true" cta="View guide" />
 <Card title="Twilio" icon="link" href="/oss/integrations/tools/twilio" arrow="true" cta="View guide" />
 <Card title="Upstage" icon="link" href="/oss/integrations/tools/upstage_groundedness_check" arrow="true" cta="View guide" />
 <Card title="Valthera" icon="link" href="/oss/integrations/tools/valthera" arrow="true" cta="View guide" />
@@ -235,3 +244,7 @@ The following table shows tools that can be used to execute financial transactio
 <Card title="Zapier Natural Language Actions" icon="link" href="/oss/integrations/tools/zapier" arrow="true" cta="View guide" />
 <Card title="ZenGuard AI" icon="link" href="/oss/integrations/tools/zenguard" arrow="true" cta="View guide" />
 </Columns>
+
+<Info>
+    If you'd like to contribute an integration, see [Contributing integrations](/oss/contributing#add-a-new-integration).
+</Info>

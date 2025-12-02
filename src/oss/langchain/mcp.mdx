@@ -2,10 +2,6 @@
 title: Model Context Protocol (MCP)
 ---
 
-import AlphaCallout from '/snippets/alpha-lc-callout.mdx';
-
-<AlphaCallout />
-
 :::python
 [Model Context Protocol (MCP)](https://modelcontextprotocol.io/introduction) is an open protocol that standardizes how applications provide tools and context to LLMs. LangChain agents can use tools defined on MCP servers using the [`langchain-mcp-adapters`](https://github.com/langchain-ai/langchain-mcp-adapters) library.
 :::
@@ -55,8 +51,9 @@ bun add @langchain/mcp-adapters
 
 MCP supports different transport mechanisms for client-server communication:
 
-- **Streamable HTTP**: Connect to a remote MCP server over HTTP. Best for production solutions.
-- **stdio**: Client launches server as a subprocess and communicates via standard input/output. Best for local tools and simple setups.
+- **stdio** – Client launches server as a subprocess and communicates via standard input/output. Best for local tools and simple setups.
+- **Streamable HTTP** – Server runs as an independent process handling HTTP requests. Supports remote connections and multiple clients.
+- **Server-Sent Events (SSE), Legacy ** – a variant of streamable HTTP optimized for real-time streaming communication.
 
 ## Use MCP tools
 
@@ -64,10 +61,11 @@ MCP supports different transport mechanisms for client-server communication:
 `langchain-mcp-adapters` enables agents to use tools defined across one or more MCP server.
 
 ```python Accessing multiple MCP servers icon="server"
-from langchain_mcp_adapters.client import MultiServerMCPClient # [!code highlight]
+from langchain_mcp_adapters.client import MultiServerMCPClient  # [!code highlight]
 from langchain.agents import create_agent
 
-client = MultiServerMCPClient( # [!code highlight]
+
+client = MultiServerMCPClient(  # [!code highlight]
     {
         "math": {
             "transport": "stdio",  # Local subprocess communication
@@ -83,10 +81,10 @@ client = MultiServerMCPClient( # [!code highlight]
     }
 )
 
-tools = await client.get_tools() # [!code highlight]
+tools = await client.get_tools()  # [!code highlight]
 agent = create_agent(
-    "anthropic:claude-3-7-sonnet-latest",
-    tools # [!code highlight]
+    "claude-sonnet-4-5-20250929",
+    tools  # [!code highlight]
 )
 math_response = await agent.ainvoke(
     {"messages": [{"role": "user", "content": "what's (3 + 5) x 12?"}]}
@@ -101,11 +99,11 @@ weather_response = await agent.ainvoke(
 `@langchain/mcp-adapters` enables agents to use tools defined across one or more MCP server.
 
 ```ts Accessing multiple MCP servers icon="server"
-import { MultiServerMCPClient } from "@langchain/mcp-adapters"; // [!code highlight]
+import { MultiServerMCPClient } from "@langchain/mcp-adapters";  // [!code highlight]
 import { ChatAnthropic } from "@langchain/anthropic";
 import { createAgent } from "langchain";
 
-const client = new MultiServerMCPClient({ // [!code highlight]
+const client = new MultiServerMCPClient({  // [!code highlight]
     math: {
         transport: "stdio",  // Local subprocess communication
         command: "node",
@@ -119,10 +117,10 @@ const client = new MultiServerMCPClient({ // [!code highlight]
     },
 });
 
-const tools = await client.getTools(); // [!code highlight]
-const agent = createAgent({ 
-    model: new ChatAnthropic({ model: "claude-3-7-sonnet-latest" }),
-    tools: tools, // [!code highlight]
+const tools = await client.getTools();  // [!code highlight]
+const agent = createAgent({
+    model: "claude-sonnet-4-5-20250929",
+    tools,  // [!code highlight]
 });
 
 const mathResponse = await agent.invoke({
@@ -396,7 +394,6 @@ app.listen(PORT, () => {
 ```
 :::
 
-
 ## Advanced
 
 ### Modify tool request at run time
@@ -446,7 +443,6 @@ client = MultiServerMCPClient(
 If you need to control the lifecycle of an MCP session (for example, when working with a stateful server that maintains context across tool calls), you can create a persistent `ClientSession` using `client.session()`.
 
 This gives you explicit control over the [session lifecycle](https://modelcontextprotocol.io/specification/2025-03-26/basic/lifecycle) — initializing, using, and then closing the session.
-
 
 :::python
 ```python Using MCP ClientSession for stateful tool usage

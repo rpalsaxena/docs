@@ -24,14 +24,16 @@ In addition, your vectors can benefit from all of Oracle Database’s most power
 
 The guide demonstrates how to use Document Processing Capabilities within Oracle AI Vector Search to load and chunk documents using OracleDocLoader and OracleTextSplitter respectively.
 
-If you are just starting with Oracle Database, consider exploring the [free Oracle 23 AI](https://www.oracle.com/database/free/#resources) which provides a great introduction to setting up your database environment. While working with the database, it is often advisable to avoid using the system user by default; instead, you can create your own user for enhanced security and customization. For detailed steps on user creation, refer to our [end-to-end guide](https://github.com/langchain-ai/langchain/blob/master/cookbook/oracleai_demo.ipynb) which also shows how to set up a user in Oracle. Additionally, understanding user privileges is crucial for managing database security effectively. You can learn more about this topic in the official [Oracle guide](https://docs.oracle.com/en/database/oracle/oracle-database/19/admqs/administering-user-accounts-and-security.html#GUID-36B21D72-1BBB-46C9-A0C9-F0D2A8591B8D) on administering user accounts and security.
+If you are just starting with Oracle Database, consider exploring the [free Oracle 23 AI](https://www.oracle.com/database/free/#resources) which provides a great introduction to setting up your database environment. While working with the database, it is often advisable to avoid using the system user by default; instead, you can create your own user for enhanced security and customization. For detailed steps on user creation, refer to our [end-to-end guide](https://github.com/langchain-ai/langchain/blob/v0.3/cookbook/oracleai_demo.ipynb) which also shows how to set up a user in Oracle. Additionally, understanding user privileges is crucial for managing database security effectively. You can learn more about this topic in the official [Oracle guide](https://docs.oracle.com/en/database/oracle/oracle-database/19/admqs/administering-user-accounts-and-security.html#GUID-36B21D72-1BBB-46C9-A0C9-F0D2A8591B8D) on administering user accounts and security.
 
 ### Prerequisites
 
-Please install Oracle Python Client driver to use LangChain with Oracle AI Vector Search.
+You'll need to install `langchain-oracledb` to use this integration.
+
+The `python-oracledb` driver is installed automatically as a dependency of langchain-oracledb.
 
 ```python
-# pip install oracledb
+# python -m pip install -U langchain-oracledb
 ```
 
 ### Connect to Oracle Database
@@ -43,17 +45,13 @@ import sys
 
 import oracledb
 
-# please update with your username, password, hostname and service_name
+# Please update with your username, password, hostname, port and service_name
 username = "<username>"
 password = "<password>"
-dsn = "<hostname>/<service_name>"
+dsn = "<hostname>:<port>/<service_name>"
 
-try:
-    conn = oracledb.connect(user=username, password=password, dsn=dsn)
-    print("Connection successful!")
-except Exception as e:
-    print("Connection failed!")
-    sys.exit(1)
+connection = oracledb.connect(user=username, password=password, dsn=dsn)
+print("Connection successful!")
 ```
 
 Now let's create a table and insert some sample docs to test.
@@ -102,10 +100,10 @@ Users have the flexibility to load documents from either the Oracle Database, a 
 
 A significant advantage of utilizing OracleDocLoader is its capability to process over 150 distinct file formats, eliminating the need for multiple loaders for different document types. For a complete list of the supported formats, please refer to the [Oracle Text Supported Document Formats](https://docs.oracle.com/en/database/oracle/oracle-database/23/ccref/oracle-text-supported-document-formats.html).
 
-Below is a sample code snippet that demonstrates how to use OracleDocLoader
+Below is a sample code snippet that demonstrates how to use `OracleDocLoader`:
 
 ```python
-from langchain_community.document_loaders.oracleai import OracleDocLoader
+from langchain_oracledb.document_loaders.oracleai import OracleDocLoader
 from langchain_core.documents import Document
 
 """
@@ -141,7 +139,7 @@ The documents may vary in size, ranging from small to very large. Users often pr
 Below is a sample code illustrating how to implement this:
 
 ```python
-from langchain_community.document_loaders.oracleai import OracleTextSplitter
+from langchain_oracledb.document_loaders.oracleai import OracleTextSplitter
 from langchain_core.documents import Document
 
 """
@@ -174,4 +172,4 @@ print(f"Number of Chunks: {len(list_chunks)}")
 
 ### End to End Demo
 
-Please refer to our complete demo guide [Oracle AI Vector Search End-to-End Demo Guide](https://github.com/langchain-ai/langchain/tree/master/cookbook/oracleai_demo.ipynb) to build an end to end RAG pipeline with the help of Oracle AI Vector Search.
+Please refer to our complete demo guide [Oracle AI Vector Search End-to-End Demo Guide](https://github.com/langchain-ai/langchain/blob/v0.3/cookbook/oracleai_demo.ipynb) to build an end to end RAG pipeline with the help of Oracle AI Vector Search.

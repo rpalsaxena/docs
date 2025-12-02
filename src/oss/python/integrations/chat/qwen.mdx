@@ -2,7 +2,7 @@
 title: ChatQwen
 ---
 
-This will help you get started with Qwen [chat models](../../concepts/chat_models). For detailed documentation of all ChatQwen features and configurations head to the [API reference](https://pypi.org/project/langchain-qwq/).
+This will help you get started with Qwen [chat models](/oss/langchain/models). For detailed documentation of all ChatQwen features and configurations head to the [API reference](https://pypi.org/project/langchain-qwq/).
 
 ## Overview
 
@@ -14,7 +14,7 @@ This will help you get started with Qwen [chat models](../../concepts/chat_model
 
 ### Model features
 
-| [Tool calling](../../how_to/tool_calling.ipynb) | [Structured output](../../how_to/structured_output.ipynb) | JSON mode | [Image input](../../how_to/multimodal_inputs.ipynb) | Audio input | Video input | [Token-level streaming](../../how_to/chat_streaming.ipynb) | Native async | [Token usage](../../how_to/chat_token_usage_tracking.ipynb) | [Logprobs](../../how_to/logprobs.ipynb) |
+| [Tool calling](/oss/langchain/tools) | [Structured output](/oss/langchain/structured-output) | JSON mode | [Image input](/oss/langchain/messages#multimodal) | Audio input | Video input | [Token-level streaming](/oss/langchain/streaming#llm-tokens) | Native async | [Token usage](/oss/langchain/models#token-usage) | [Logprobs](/oss/langchain/models#log-probabilities) |
 | :---: | :---: | :---: | :---: |  :---: | :---: | :---: | :---: | :---: | :---: |
 | ✅ | ✅ | ✅ |✅  | ❌ | ✅ | ✅ | ✅ | ✅ | ❌ |
 
@@ -39,7 +39,7 @@ if not os.getenv("DASHSCOPE_API_KEY"):
 The LangChain Qwen integration lives in the `langchain-qwq` package:
 
 ```python
-%pip install -qU langchain-qwq
+pip install -qU langchain-qwq
 ```
 
 ## Instantiation
@@ -77,38 +77,6 @@ ai_msg
 AIMessage(content="J'adore la programmation.", additional_kwargs={}, response_metadata={'finish_reason': 'stop', 'model_name': 'qwen-flash'}, id='run--40f2e75b-7d28-4a71-8f5f-561509ac2010-0', usage_metadata={'input_tokens': 32, 'output_tokens': 8, 'total_tokens': 40, 'input_token_details': {}, 'output_token_details': {}})
 ```
 
-## Chaining
-
-We can [chain](../../how_to/sequence.ipynb) our model with a prompt template like so:
-
-```python
-from langchain_core.prompts import ChatPromptTemplate
-
-prompt = ChatPromptTemplate(
-    [
-        (
-            "system",
-            "You are a helpful assistant that translates"
-            "{input_language} to {output_language}.",
-        ),
-        ("human", "{input}"),
-    ]
-)
-
-chain = prompt | llm
-chain.invoke(
-    {
-        "input_language": "English",
-        "output_language": "German",
-        "input": "I love programming.",
-    }
-)
-```
-
-```output
-AIMessage(content='Ich liebe Programmierung.', additional_kwargs={}, response_metadata={'finish_reason': 'stop', 'model_name': 'qwen-flash'}, id='run--ed052510-82f4-4dc5-a7f1-761a792c0dd4-0', usage_metadata={'input_tokens': 28, 'output_tokens': 5, 'total_tokens': 33, 'input_token_details': {}, 'output_token_details': {}})
-```
-
 ## Tool Calling
 
 ChatQwen supports tool calling API that lets you describe tools and their arguments, and have the model return a JSON object with a tool to invoke and the inputs to that tool.
@@ -116,7 +84,7 @@ ChatQwen supports tool calling API that lets you describe tools and their argume
 ### Use with `bind_tools`
 
 ```python
-from langchain_core.tools import tool
+from langchain.tools import tool
 from langchain_qwq import ChatQwen
 
 
@@ -141,7 +109,7 @@ content='' additional_kwargs={'tool_calls': [{'index': 0, 'id': 'call_f0c2cc4930
 ### Vision Support
 #### Image
 ```python
-from langchain_core.messages import HumanMessage
+from langchain.messages import HumanMessage
 
 model = ChatQwen(model="qwen-vl-max-latest")
 
@@ -166,7 +134,7 @@ content='In this image, I see a heartwarming scene on a sandy beach during what 
 ```
 #### Video
 ```python
-from langchain_core.messages import HumanMessage
+from langchain.messages import HumanMessage
 
 model = ChatQwen(model="qwen-vl-max-latest")
 
@@ -189,6 +157,9 @@ print(response)
 ```output
 content='This video features a young woman with short, neatly styled brown hair and bangs. She is wearing a soft pink knitted cardigan over a white top, accessorized with a delicate necklace. The background is softly blurred, suggesting an outdoor urban setting with modern buildings, possibly during daytime with natural lighting.\n\nThroughout the video, the woman maintains a warm and friendly demeanor, smiling gently and occasionally laughing. Her expressions are animated and cheerful, conveying a sense of happiness and approachability. The lighting highlights her features beautifully, giving the scene a pleasant and inviting atmosphere.\n\nThe watermark in the top-right corner indicates that this video was created using AI synthesis technology ("通义·AI合成"), suggesting that the content may be generated or enhanced by artificial intelligence. This could mean the visuals are highly polished and stylized, typical of AI-generated media.\n\nOverall, the video appears to be a short, positive, and uplifting clip, possibly intended for use in promotional content, social media, or as part of a digital character presentation.' additional_kwargs={} response_metadata={'finish_reason': 'stop', 'model_name': 'qwen-vl-max-latest'} id='run--c567a6e2-14e0-47e1-acb6-cfe2953fb1ad-0' usage_metadata={'input_tokens': 3607, 'output_tokens': 204, 'total_tokens': 3811, 'input_token_details': {}, 'output_token_details': {}}
 ```
+
+---
+
 ## API reference
 
 For detailed documentation of all ChatQwen features and configurations head to the [API reference](https://pypi.org/project/langchain-qwq/)

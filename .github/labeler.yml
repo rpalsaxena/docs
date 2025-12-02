@@ -33,20 +33,6 @@ oss:
       - src/oss/**
       - src/oss/**/*
 
-# Label for LangGraph Platform documentation changes
-langgraph-platform:
-  - changed-files:
-    - any-glob-to-any-file:
-      - src/langgraph-platform/**
-      - src/langgraph-platform/**/*
-
-# Label for Labs documentation changes
-labs:
-  - changed-files:
-    - any-glob-to-any-file:
-      - src/labs/**
-      - src/labs/**/*
-
 # Label for Python-specific documentation
 python:
   - changed-files:
@@ -63,6 +49,27 @@ javascript:
       - src/oss/javascript/**/*
       - '**/*.js'
       - '**/*.ts'
+
+# Label for reference-specific documentation
+reference:
+  - changed-files:
+    - any-glob-to-any-file:
+      - reference/**
+      - reference/**/*
+
+# Label for Python reference-specific documentation
+python-reference:
+  - changed-files:
+    - any-glob-to-any-file:
+      - reference/python/**
+      - reference/python/**/*
+
+# Label for JS reference-specific documentation
+javascript-reference:
+  - changed-files:
+    - any-glob-to-any-file:
+      - reference/javascript/**
+      - reference/javascript/**/*
 
 # Label for build/CI changes
 ci:
