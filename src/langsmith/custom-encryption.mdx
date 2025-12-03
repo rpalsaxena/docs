@@ -79,7 +79,7 @@ async def decrypt_blob(ctx: EncryptionContext, data: bytes) -> bytes:
 
 The `ctx.metadata` dict comes from the `X-Encryption-Context` header and is stored alongside encrypted data, so the correct key is used on decryption.
 
-For production deployments with key rotation and audit logging, see [Envelope encryption with AWS KMS](#envelope-encryption-with-aws-kms).
+For production deployments with key rotation and audit logging, see [Envelope encryption with AWS Encryption SDK](#envelope-encryption-with-aws-encryption-sdk).
 
 ## JSON encryption (metadata)
 
@@ -89,9 +89,9 @@ JSON handlers encrypt structured data like thread metadata, assistant context, a
 **Encrypted fields cannot be searched or filtered.** Design your metadata schema so that fields you need to query remain unencrypted.
 </Warning>
 
-<Warning>
-**Migration required for existing data.** Unlike blob encryption, JSON handlers have no automatic way to detect whether a field value is already encrypted. If you enable JSON encryption on a system with existing unencrypted data, your decrypt handler may fail when it tries to decrypt plaintext values. Either migrate existing data before enabling encryption, or catch decryption errors and return the original value (see examples below).
-</Warning>
+<Note>
+**Migration consideration:** Unlike blob encryption, JSON handlers have no built-in way to detect whether a field value is already encrypted. We recommend storing all encrypted values under a single key (e.g., `__encrypted__`)—if the key exists, decrypt it; if not, data is unencrypted and passes through unchanged. The examples below use this pattern.
+</Note>
 
 Common fields to leave **unencrypted** for search and filtering:
 
@@ -108,8 +108,9 @@ Encrypt fields containing **sensitive data**:
 - Business-sensitive data
 
 ```python
+import json
 import os
-from cryptography.fernet import Fernet, InvalidToken
+from cryptography.fernet import Fernet
 from langgraph_sdk import Encryption, EncryptionContext
 
 encryption = Encryption()
@@ -120,6 +121,7 @@ TENANT_KEYS = {
 }
 
 SENSITIVE_FIELDS = {"messages", "email", "phone", "content"}
+ENCRYPTED_KEY = "__encrypted__"
 
 
 def _get_fernet(ctx: EncryptionContext) -> Fernet:
@@ -132,28 +134,23 @@ def _get_fernet(ctx: EncryptionContext) -> Fernet:
 @encryption.encrypt.json
 async def encrypt_json(ctx: EncryptionContext, data: dict) -> dict:
     fernet = _get_fernet(ctx)
-    result = {}
-    for key, value in data.items():
-        if key in SENSITIVE_FIELDS and value is not None:
-            result[key] = fernet.encrypt(str(value).encode()).decode()
-        else:
-            result[key] = value
+    to_encrypt = {k: v for k, v in data.items() if k in SENSITIVE_FIELDS and v is not None}
+    if not to_encrypt:
+        return data
+    result = {k: v for k, v in data.items() if k not in SENSITIVE_FIELDS}
+    result[ENCRYPTED_KEY] = fernet.encrypt(json.dumps(to_encrypt).encode()).decode()
     return result
 
 
 @encryption.decrypt.json
 async def decrypt_json(ctx: EncryptionContext, data: dict) -> dict:
+    if ENCRYPTED_KEY not in data:
+        return data  # Not encrypted, pass through unchanged
     fernet = _get_fernet(ctx)
-    result = {}
-    for key, value in data.items():
-        if key in SENSITIVE_FIELDS and isinstance(value, str):
-            try:
-                result[key] = fernet.decrypt(value.encode()).decode()
-            except InvalidToken:
-                # Not encrypted (pre-migration data), return as-is
-                result[key] = value
-        else:
-            result[key] = value
+    encrypted_blob = data[ENCRYPTED_KEY]
+    decrypted = json.loads(fernet.decrypt(encrypted_blob.encode()).decode())
+    result = {k: v for k, v in data.items() if k != ENCRYPTED_KEY}
+    result.update(decrypted)
     return result
 ```
 
@@ -264,11 +261,10 @@ For production deployments on AWS, use the [AWS Encryption SDK](https://docs.aws
 
 ```python
 import base64
+import json
 import os
-from binascii import Error as BinasciiError
 
 import aws_encryption_sdk
-from aws_encryption_sdk.exceptions import NotSupportedError, SerializationError
 from aws_encryption_sdk import (
     CachingCryptoMaterialsManager,
     CommitmentPolicy,
@@ -279,7 +275,7 @@ from langgraph_sdk import Encryption, EncryptionContext
 
 encryption = Encryption()
 
-# The AWS Encryption SDK uses envelope encryption: one KMS API call generates a data key,
+# The SDK uses envelope encryption: one KMS API call generates a data key,
 # then encrypts/decrypts locally. The cache reuses data keys across operations.
 client = aws_encryption_sdk.EncryptionSDKClient(
     commitment_policy=CommitmentPolicy.REQUIRE_ENCRYPT_REQUIRE_DECRYPT
@@ -294,6 +290,7 @@ cmm = CachingCryptoMaterialsManager(
 )
 
 SENSITIVE_FIELDS = {"messages", "email", "phone", "content"}
+ENCRYPTED_KEY = "__encrypted__"
 
 
 @encryption.encrypt.blob
@@ -314,34 +311,28 @@ async def decrypt_blob(ctx: EncryptionContext, data: bytes) -> bytes:
 
 @encryption.encrypt.json
 async def encrypt_json(ctx: EncryptionContext, data: dict) -> dict:
-    result = {}
-    for key, value in data.items():
-        if key in SENSITIVE_FIELDS and value is not None:
-            ciphertext, _ = client.encrypt(
-                source=str(value).encode(),
-                materials_manager=cmm,
-                encryption_context={"tenant_id": ctx.metadata["tenant_id"]},
-            )
-            result[key] = base64.b64encode(ciphertext).decode()
-        else:
-            result[key] = value
+    to_encrypt = {k: v for k, v in data.items() if k in SENSITIVE_FIELDS and v is not None}
+    if not to_encrypt:
+        return data
+    ciphertext, _ = client.encrypt(
+        source=json.dumps(to_encrypt).encode(),
+        materials_manager=cmm,
+        encryption_context={"tenant_id": ctx.metadata["tenant_id"]},
+    )
+    result = {k: v for k, v in data.items() if k not in SENSITIVE_FIELDS}
+    result[ENCRYPTED_KEY] = base64.b64encode(ciphertext).decode()
     return result
 
 
 @encryption.decrypt.json
 async def decrypt_json(ctx: EncryptionContext, data: dict) -> dict:
-    result = {}
-    for key, value in data.items():
-        if key in SENSITIVE_FIELDS and isinstance(value, str):
-            try:
-                ciphertext = base64.b64decode(value)
-                plaintext, _ = client.decrypt(source=ciphertext, key_provider=key_provider)
-                result[key] = plaintext.decode()
-            except (BinasciiError, SerializationError, NotSupportedError):
-                # Not encrypted (pre-migration data), return as-is
-                result[key] = value
-        else:
-            result[key] = value
+    if ENCRYPTED_KEY not in data:
+        return data  # Not encrypted, pass through unchanged
+    ciphertext = base64.b64decode(data[ENCRYPTED_KEY])
+    plaintext, _ = client.decrypt(source=ciphertext, key_provider=key_provider)
+    decrypted = json.loads(plaintext.decode())
+    result = {k: v for k, v in data.items() if k != ENCRYPTED_KEY}
+    result.update(decrypted)
     return result
 ```
 
