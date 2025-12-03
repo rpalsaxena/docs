@@ -419,13 +419,13 @@ Certain models (such as `gemini-2.5-flash-preview-tts`) can generate audio files
 See more information on the [Gemini API docs](https://ai.google.dev/gemini-api/docs/speech-generation) for details.
 
 ```python
-from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_google_genai import ChatGoogleGenerativeAI, Modality
 
 model = ChatGoogleGenerativeAI(model="gemini-2.5-flash-preview-tts")
 
 response = model.invoke(
     "Please say The quick brown fox jumps over the lazy dog",
-    generation_config=dict(response_modalities=["AUDIO"]),
+    generation_config=dict(response_modalities=[Modality.AUDIO]),
 )
 
 # Base64 encoded binary data of the audio
