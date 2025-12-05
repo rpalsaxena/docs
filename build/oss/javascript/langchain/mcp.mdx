@@ -3,14 +3,14 @@ title: Model Context Protocol (MCP)
 ---
 
 
-[Model Context Protocol (MCP)](https://modelcontextprotocol.io/introduction) is an open protocol that standardizes how applications provide tools and context to LLMs. LangChain agents can use tools defined on MCP servers using the [`langchain-mcp-adapters`](https://github.com/langchain-ai/langchainjs/tree/main/libs/langchain-mcp-adapters/adapters) library.
+[Model Context Protocol (MCP)](https://modelcontextprotocol.io/introduction) is an open protocol that standardizes how applications provide tools and context to LLMs. LangChain agents can use tools defined on MCP servers using the [`@langchain/mcp-adapters`](https://github.com/langchain-ai/langchainjs/tree/main/libs/langchain-mcp-adapters) library.
 
 
-## Install
+## Quickstart
 
 
 
-Install the `@langchain/mcp-adapters` library to use MCP tools in LangGraph:
+Install the `@langchain/mcp-adapters` library:
 
 <CodeGroup>
 ```bash npm
@@ -30,20 +30,11 @@ bun add @langchain/mcp-adapters
 ```
 </CodeGroup>
 
+`@langchain/mcp-adapters` enables agents to use tools defined across one or more MCP servers.
 
-## Transport types
-
-MCP supports different transport mechanisms for client-server communication:
-
-- **stdio** – Client launches server as a subprocess and communicates via standard input/output. Best for local tools and simple setups.
-- **Streamable HTTP** – Server runs as an independent process handling HTTP requests. Supports remote connections and multiple clients.
-- **Server-Sent Events (SSE)** – a variant of streamable HTTP optimized for real-time streaming communication.
-
-## Use MCP tools
-
-
-
-`@langchain/mcp-adapters` enables agents to use tools defined across one or more MCP server.
+<Note>
+    `MultiServerMCPClient` is **stateless by default**. Each tool invocation creates a fresh MCP `ClientSession`, executes the tool, and then cleans up. See the [stateful sessions](#stateful-sessions) section for more details.
+</Note>
 
 ```ts Accessing multiple MCP servers icon="server"
 import { MultiServerMCPClient } from "@langchain/mcp-adapters";  // [!code highlight]
@@ -58,7 +49,7 @@ const client = new MultiServerMCPClient({  // [!code highlight]
         args: ["/path/to/math_server.js"],
     },
     weather: {
-        transport: "sse",  // Server-Sent Events for streaming
+        transport: "streamable_http",  // HTTP-based remote server
         // Ensure you start your weather server on port 8000
         url: "http://localhost:8000/mcp",
     },
@@ -80,11 +71,7 @@ const weatherResponse = await agent.invoke({
 ```
 
 
-<Note>
-    `MultiServerMCPClient` is **stateless by default**. Each tool invocation creates a fresh MCP `ClientSession`, executes the tool, and then cleans up.
-</Note>
-
-## Custom MCP servers
+## Custom servers
 
 
 
@@ -109,7 +96,8 @@ bun add @modelcontextprotocol/sdk
 </CodeGroup>
 
 
-Use the following reference implementations to test your agent with MCP tool servers.
+To test your agent with MCP tool servers, use the following examples:
+
 
 
 
@@ -128,7 +116,7 @@ const server = new Server(
     },
     {
         capabilities: {
-        tools: {},
+            tools: {},
         },
     }
 );
@@ -140,36 +128,36 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
             name: "add",
             description: "Add two numbers",
             inputSchema: {
-            type: "object",
-            properties: {
-                a: {
-                type: "number",
-                description: "First number",
+                type: "object",
+                properties: {
+                    a: {
+                        type: "number",
+                        description: "First number",
+                    },
+                    b: {
+                        type: "number",
+                        description: "Second number",
+                    },
                 },
-                b: {
-                type: "number",
-                description: "Second number",
-                },
-            },
-            required: ["a", "b"],
+                required: ["a", "b"],
             },
         },
         {
             name: "multiply",
             description: "Multiply two numbers",
             inputSchema: {
-            type: "object",
-            properties: {
-                a: {
-                type: "number",
-                description: "First number",
+                type: "object",
+                properties: {
+                    a: {
+                        type: "number",
+                        description: "First number",
+                    },
+                    b: {
+                        type: "number",
+                        description: "Second number",
+                    },
                 },
-                b: {
-                type: "number",
-                description: "Second number",
-                },
-            },
-            required: ["a", "b"],
+                required: ["a", "b"],
             },
         },
         ],
@@ -179,29 +167,29 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
 server.setRequestHandler(CallToolRequestSchema, async (request) => {
     switch (request.params.name) {
         case "add": {
-        const { a, b } = request.params.arguments as { a: number; b: number };
-        return {
-            content: [
-            {
-                type: "text",
-                text: String(a + b),
-            },
-            ],
-        };
+            const { a, b } = request.params.arguments as { a: number; b: number };
+            return {
+                content: [
+                {
+                    type: "text",
+                    text: String(a + b),
+                },
+                ],
+            };
         }
         case "multiply": {
-        const { a, b } = request.params.arguments as { a: number; b: number };
-        return {
-            content: [
-            {
-                type: "text",
-                text: String(a * b),
-            },
-            ],
-        };
+            const { a, b } = request.params.arguments as { a: number; b: number };
+            return {
+                content: [
+                {
+                    type: "text",
+                    text: String(a * b),
+                },
+                ],
+            };
         }
         default:
-        throw new Error(`Unknown tool: ${request.params.name}`);
+            throw new Error(`Unknown tool: ${request.params.name}`);
     }
 });
 
@@ -233,7 +221,7 @@ const server = new Server(
     },
     {
         capabilities: {
-        tools: {},
+            tools: {},
         },
     }
 );
@@ -262,18 +250,18 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
 server.setRequestHandler(CallToolRequestSchema, async (request) => {
     switch (request.params.name) {
         case "get_weather": {
-        const { location } = request.params.arguments as { location: string };
-        return {
-            content: [
-            {
-                type: "text",
-                text: `It's always sunny in ${location}`,
-            },
-            ],
-        };
+            const { location } = request.params.arguments as { location: string };
+            return {
+                content: [
+                    {
+                        type: "text",
+                        text: `It's always sunny in ${location}`,
+                    },
+                ],
+            };
         }
         default:
-        throw new Error(`Unknown tool: ${request.params.name}`);
+            throw new Error(`Unknown tool: ${request.params.name}`);
     }
 });
 
@@ -289,19 +277,79 @@ app.listen(PORT, () => {
 ```
 
 
-## Stateful tool usage
+## Transports
 
-For stateful servers that maintain context between tool calls, use `client.session()` to create a persistent `ClientSession`.
+MCP supports different transport mechanisms for client-server communication.
+
+### HTTP
+
+The `http` transport (also referred to as `streamable-http`) uses HTTP requests for client-server communication. See the [MCP HTTP transport specification](https://modelcontextprotocol.io/specification/2025-03-26/basic/transports#streamable-http) for more details.
 
 
 
-```typescript Using MCP ClientSession for stateful tool usage
-import { loadMCPTools } from "@langchain/mcp-adapters/tools.js";
+```typescript
+const client = new MultiServerMCPClient({
+    weather: {
+        transport: "sse",
+        url: "http://localhost:8000/mcp",
+    },
+});
+```
+
+
+#### Passing headers
+
+
+
+#### Authentication
+
+
+
+### stdio
+
+Client launches server as a subprocess and communicates via standard input/output. Best for local tools and simple setups.
+
+<Note>
+    Unlike HTTP transports, `stdio` connections are inherently **stateful**—the subprocess persists for the lifetime of the client connection. However, when using `MultiServerMCPClient` without explicit session management, each tool call still creates a new session. See [stateful sessions](#stateful-sessions) for managing persistent connections.
+</Note>
+
+
+
+```typescript
+const client = new MultiServerMCPClient({
+    math: {
+        transport: "stdio",
+        command: "node",
+        args: ["/path/to/math_server.js"],
+    },
+});
+```
+
+
+
+
+## Core features
+
+### Tools
+
+[Tools](https://modelcontextprotocol.io/docs/concepts/tools) allow MCP servers to expose executable functions that LLMs can invoke to perform actions—such as querying databases, calling APIs, or interacting with external systems. LangChain converts MCP tools into LangChain [tools](/oss/javascript/langchain/tools), making them directly usable in any LangChain agent or workflow.
+
+#### Loading tools
+
+Use `client.get_tools()` to retrieve tools from MCP servers and pass them to your agent:
+
+
+
+```typescript
+import { MultiServerMCPClient } from "@langchain/mcp-adapters";
+import { createAgent } from "langchain";
 
 const client = new MultiServerMCPClient({...});
-const session = await client.session("math");
-const tools = await loadMCPTools(session);
+const tools = await client.getTools();  // [!code highlight]
+const agent = createAgent({ model: "claude-sonnet-4-5-20250929", tools });
 ```
+
+
 
 
 ## Additional resources
@@ -309,7 +357,7 @@ const tools = await loadMCPTools(session);
 * [MCP documentation](https://modelcontextprotocol.io/introduction)
 * [MCP Transport documentation](https://modelcontextprotocol.io/docs/concepts/transports)
 
-* [`langchain-mcp-adapters`](https://github.com/langchain-ai/langchainjs/tree/main/libs/langchain-mcp-adapters/)
+* [`@langchain/mcp-adapters`](https://github.com/langchain-ai/langchainjs/tree/main/libs/langchain-mcp-adapters/)
 
 ---
 
