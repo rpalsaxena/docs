@@ -422,40 +422,18 @@ In **graph handoffs**, transitions between agents are defined by graph edges rat
 
     ```mermaid
     graph LR
-        A[User] --> B[Agent A]
-        B --> C[Agent B]
-        C --> D[Agent C]
+        A[User] --> B[Researcher]
+        B --> C[Writer]
+        C --> D[Editor]
         D --> E[Result]
     ```
 
     Common examples:
     - **Content pipelines**: research → draft → edit → publish
     - **Data processing**: extract → validate → transform → load
-  </Tab>
-  <Tab title="Router">
-    In a **router pattern**, a routing step examines the input and directs it to one of several specialist agents. The routing can be deterministic (based on state values) or use an LLM classifier.
 
-    ```mermaid
-    graph LR
-        A[User] --> R[Router]
-        R -->|condition A| B[Agent A]
-        R -->|condition B| C[Agent B]
-        R -->|condition C| D[Agent C]
-        B --> E[Result]
-        C --> E
-        D --> E
-    ```
+    #### Example
 
-    Common examples:
-    - **Intent-based routing**: classify user intent and route to billing, technical support, or sales
-    - **Domain routing**: route to different specialists based on the type of query
-  </Tab>
-</Tabs>
-
-#### Example
-
-<Tabs>
-  <Tab title="Sequential">
     A content pipeline where each agent processes and passes to the next:
 
     :::python
@@ -552,6 +530,25 @@ In **graph handoffs**, transitions between agents are defined by graph edges rat
     :::
   </Tab>
   <Tab title="Router">
+    In a **router pattern**, a routing step examines the input and directs it to one of several specialist agents. The routing can be deterministic (based on state values) or use an LLM classifier.
+
+    ```mermaid
+    graph LR
+        A[User] --> R[Router]
+        R -->|billing| B[Billing]
+        R -->|technical| C[Technical]
+        R -->|sales| D[Sales]
+        B --> E[Result]
+        C --> E
+        D --> E
+    ```
+
+    Common examples:
+    - **Intent-based routing**: classify user intent and route to billing, technical support, or sales
+    - **Domain routing**: route to different specialists based on the type of query
+
+    #### Example
+
     A router that classifies intent and routes to the appropriate specialist agent:
 
     :::python
@@ -785,15 +782,12 @@ const agent = createAgent({
 
 ### Trade-offs
 
-<CardGroup cols={2}>
-  <Card title="Benefits" icon="circle-check">
-    - **Reduces context usage**: Load only the 2-3 skills needed for a task, not all available skills
-    - **Enables team autonomy**: Different teams can develop specialized skills independently
-    - **Scales efficiently**: Add dozens or hundreds of skills without overwhelming context
-  </Card>
-  <Card title="Limitations" icon="triangle-exclamation">
-    - **Latency**: Loading skills on-demand requires additional tool calls
-    - **Workflow control**: Basic implementations rely on prompting to guide skill usage — you cannot enforce hard constraints without custom logic
-  </Card>
-</CardGroup>
+**Benefits:**
+- **Reduces context usage**: Load only the 2-3 skills needed for a task, not all available skills
+- **Enables team autonomy**: Different teams can develop specialized skills independently
+- **Scales efficiently**: Add dozens or hundreds of skills without overwhelming context
+
+**Limitations:**
+- **Latency**: Loading skills on-demand requires additional tool calls
+- **Workflow control**: Basic implementations rely on prompting to guide skill usage — you cannot enforce hard constraints without custom logic
 
