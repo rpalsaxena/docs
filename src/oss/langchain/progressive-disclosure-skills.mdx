@@ -8,7 +8,9 @@ import ChatModelTabsJs from '/snippets/chat-model-tabs-js.mdx';
 
 This tutorial shows how to use **progressive disclosure** - a context management technique where the agent loads information on-demand rather than upfront - to implement **skills** (specialized prompt-based instructions). The agent loads skills via tool calls, rather than dynamically changing the system prompt, discovering and loading only the skills it needs for each task.
 
-**What you'll build:** An employee support agent with two skills (expense reporting and travel booking). The agent sees lightweight skill descriptions in its system prompt, then loads full skill content through tool calls only when relevant to the user's query.
+**Use case:** Imagine building an agent to help write SQL queries across different business verticals in a large enterprise. Your organization might have separate datastores for each vertical, or a single monolithic database with thousands of tables. Either way, loading all schemas upfront would overwhelm the context window. Progressive disclosure solves this by loading only the relevant schema when needed. This architecture also enables different product owners and stakeholders to independently contribute and maintain skills for their specific business verticals.
+
+**What you'll build:** A SQL query assistant with two skills (sales analytics and inventory management). The agent sees lightweight skill descriptions in its system prompt, then loads full database schemas and business logic through tool calls only when relevant to the user's query.
 
 **Why progressive disclosure:**
 - **Reduces context usage** - load only the 2-3 skills needed for a task, not all available skills
@@ -44,17 +46,17 @@ Here's how progressive disclosure with skills works:
 ```mermaid
 %%{init: {'theme':'base', 'themeVariables': { 'primaryColor':'#4CAF50','primaryTextColor':'#fff','primaryBorderColor':'#2E7D32','lineColor':'#666','secondaryColor':'#FF9800','tertiaryColor':'#2196F3','tertiaryBorderColor':'#1565C0','tertiaryTextColor':'#fff'}}}%%
 flowchart TD
-    Start([💬 User Query]) --> SystemPrompt[📋 Skill descriptions<br/>in system prompt]
+    Start([💬 User: Write SQL query<br/>for high-value customers]) --> SystemPrompt[📋 Agent sees skill descriptions:<br/>• sales_analytics<br/>• inventory_management]
 
-    SystemPrompt --> Decide{🤔 Which skill<br/>is relevant?}
+    SystemPrompt --> Decide{🤔 Need sales schema}
 
-    Decide --> LoadSkill[🔧 Call load_skill<br/>tool]
+    Decide --> LoadSkill[🔧 load_skill<br/>'sales_analytics']
 
-    LoadSkill --> Enriched[✨ Skill content returned<br/>in tool result]
+    LoadSkill --> Schema[📊 Schema loaded:<br/>customers, orders tables<br/>+ business logic]
 
-    Enriched --> Solve[💡 Apply skill<br/>to answer]
+    Schema --> WriteQuery[✍️ Agent writes SQL query<br/>using schema knowledge]
 
-    Solve --> Response([✅ Response])
+    WriteQuery --> Response([✅ Returns valid SQL<br/>following business rules])
 
     %% Styling for light and dark modes
     classDef startEnd fill:#4CAF50,stroke:#2E7D32,stroke-width:2px,color:#fff
@@ -63,9 +65,9 @@ flowchart TD
     classDef enrichment fill:#9C27B0,stroke:#6A1B9A,stroke-width:2px,color:#fff
 
     class Start,Response startEnd
-    class SystemPrompt,LoadSkill,Solve process
+    class SystemPrompt,LoadSkill,WriteQuery process
     class Decide decision
-    class Enriched enrichment
+    class Schema enrichment
 ```
 
 ## Setup
@@ -160,55 +162,135 @@ class Skill(TypedDict):  # [!code highlight]
     content: str  # Full skill content with detailed instructions
 ```
 
-Now define example skills for an employee support agent. The skills are designed to be **lightweight in description** (shown to the agent upfront) but **detailed in content** (loaded only when needed):
+Now define example skills for a SQL query assistant. The skills are designed to be **lightweight in description** (shown to the agent upfront) but **detailed in content** (loaded only when needed):
 
 <Accordion title="View complete skill definitions">
 
 ```python
 SKILLS: list[Skill] = [
     {
-        "name": "expense_reporting",
-        "description": "Handles expense report submission, approval workflows, and reimbursement status inquiries.",
-        "content": """# Expense Reporting Skill
+        "name": "sales_analytics",
+        "description": "Database schema and business logic for sales data analysis including customers, orders, and revenue.",
+        "content": """# Sales Analytics Schema
 
-You help employees with expense reports. You can:
+## Tables
 
-1. **Submit expense reports**: Guide employees through submitting new expense reports
-   - Required fields: date, amount, category, description, receipt
-   - Categories: travel, meals, supplies, software, other
-   - Receipts must be attached for expenses over $25
+### customers
+- customer_id (PRIMARY KEY)
+- name
+- email
+- signup_date
+- status (active/inactive)
+- customer_tier (bronze/silver/gold/platinum)
 
-2. **Check status**: Look up the status of submitted expense reports
-   - Pending: awaiting manager approval
-   - Approved: approved and queued for payment
-   - Paid: reimbursement processed
-   - Rejected: needs revision (check rejection reason)
+### orders
+- order_id (PRIMARY KEY)
+- customer_id (FOREIGN KEY -> customers)
+- order_date
+- status (pending/completed/cancelled/refunded)
+- total_amount
+- sales_region (north/south/east/west)
 
-3. **Approval workflows**: Expenses under $100 auto-approve, over $100 need manager approval
+### order_items
+- item_id (PRIMARY KEY)
+- order_id (FOREIGN KEY -> orders)
+- product_id
+- quantity
+- unit_price
+- discount_percent
 
-Always be specific about next steps and timelines (payments process weekly on Fridays).""",
+## Business Logic
+
+**Active customers**: status = 'active' AND signup_date <= CURRENT_DATE - INTERVAL '90 days'
+
+**Revenue calculation**: Only count orders with status = 'completed'. Use total_amount from orders table, which already accounts for discounts.
+
+**Customer lifetime value (CLV)**: Sum of all completed order amounts for a customer.
+
+**High-value orders**: Orders with total_amount > 1000
+
+## Example Query
+
+-- Get top 10 customers by revenue in the last quarter
+SELECT
+    c.customer_id,
+    c.name,
+    c.customer_tier,
+    SUM(o.total_amount) as total_revenue
+FROM customers c
+JOIN orders o ON c.customer_id = o.customer_id
+WHERE o.status = 'completed'
+  AND o.order_date >= CURRENT_DATE - INTERVAL '3 months'
+GROUP BY c.customer_id, c.name, c.customer_tier
+ORDER BY total_revenue DESC
+LIMIT 10;
+""",
     },
     {
-        "name": "travel_booking",
-        "description": "Handles flight and hotel bookings, travel policy questions, and itinerary management.",
-        "content": """# Travel Booking Skill
+        "name": "inventory_management",
+        "description": "Database schema and business logic for inventory tracking including products, warehouses, and stock levels.",
+        "content": """# Inventory Management Schema
 
-You help employees book business travel. You can:
+## Tables
 
-1. **Book flights**: Help find and book flights within travel policy
-   - Must use preferred airlines: United, Delta, American
-   - Economy class for flights under 5 hours
-   - Business class allowed for international flights over 5 hours
-   - Book at least 14 days in advance when possible
+### products
+- product_id (PRIMARY KEY)
+- product_name
+- sku
+- category
+- unit_cost
+- reorder_point (minimum stock level before reordering)
+- discontinued (boolean)
 
-2. **Book hotels**: Help find and book hotels within travel policy
-   - Per night limit: $200 in most cities, $300 in high-cost cities (NYC, SF, LA, DC)
-   - Must use corporate booking portal for best rates
-   - Preferred hotel chains: Marriott, Hilton, Hyatt
+### warehouses
+- warehouse_id (PRIMARY KEY)
+- warehouse_name
+- location
+- capacity
 
-3. **Travel policy**: Answer questions about travel policy, expense limits, and approval requirements
+### inventory
+- inventory_id (PRIMARY KEY)
+- product_id (FOREIGN KEY -> products)
+- warehouse_id (FOREIGN KEY -> warehouses)
+- quantity_on_hand
+- last_updated
 
-Always verify trip dates, destination, and get manager approval before booking.""",
+### stock_movements
+- movement_id (PRIMARY KEY)
+- product_id (FOREIGN KEY -> products)
+- warehouse_id (FOREIGN KEY -> warehouses)
+- movement_type (inbound/outbound/transfer/adjustment)
+- quantity (positive for inbound, negative for outbound)
+- movement_date
+- reference_number
+
+## Business Logic
+
+**Available stock**: quantity_on_hand from inventory table where quantity_on_hand > 0
+
+**Products needing reorder**: Products where total quantity_on_hand across all warehouses is less than or equal to the product's reorder_point
+
+**Active products only**: Exclude products where discontinued = true unless specifically analyzing discontinued items
+
+**Stock valuation**: quantity_on_hand * unit_cost for each product
+
+## Example Query
+
+-- Find products below reorder point across all warehouses
+SELECT
+    p.product_id,
+    p.product_name,
+    p.reorder_point,
+    SUM(i.quantity_on_hand) as total_stock,
+    p.unit_cost,
+    (p.reorder_point - SUM(i.quantity_on_hand)) as units_to_reorder
+FROM products p
+JOIN inventory i ON p.product_id = i.product_id
+WHERE p.discontinued = false
+GROUP BY p.product_id, p.product_name, p.reorder_point, p.unit_cost
+HAVING SUM(i.quantity_on_hand) <= p.reorder_point
+ORDER BY units_to_reorder DESC;
+""",
     },
 ]
 ```
@@ -297,6 +379,10 @@ class SkillMiddleware(AgentMiddleware):  # [!code highlight]
 
 The middleware appends skill descriptions to the system prompt, making the agent aware of available skills without loading their full content. The `load_skill` tool is registered as a class variable, making it available to the agent.
 
+<Note>
+**Production consideration**: This tutorial loads the skill list in `__init__` for simplicity. In a production system, you may want to load skills in the `before_agent` hook instead, allowing them to be refreshed periodically to reflect up-to-date changes (e.g., when new skills are added or existing ones are modified). See the [before_agent hook documentation](/oss/langchain/middleware/custom#before_agent) for details.
+</Note>
+
 ## 4. Create the agent with skill support
 
 Now create the agent with the skill middleware and a checkpointer for state persistence:
@@ -308,7 +394,10 @@ from langgraph.checkpoint.memory import InMemorySaver
 # Create the agent with skill support
 agent = create_agent(
     model,
-    system_prompt="You are a helpful employee support assistant.",
+    system_prompt=(
+        "You are a SQL query assistant that helps users "
+        "write queries against business databases."
+    ),
     middleware=[SkillMiddleware()],  # [!code highlight]
     checkpointer=InMemorySaver(),
 )
@@ -327,16 +416,15 @@ import uuid
 thread_id = str(uuid.uuid4())
 config = {"configurable": {"thread_id": thread_id}}
 
-# Ask about expense reporting
+# Ask for a SQL query
 result = agent.invoke(  # [!code highlight]
     {
         "messages": [
             {
                 "role": "user",
                 "content": (
-                    "I need to submit an expense report "
-                    "for a $150 dinner. What information "
-                    "do I need to provide?"
+                    "Write a SQL query to find all customers "
+                    "who made orders over $1000 in the last month"
                 ),
             }
         ]
@@ -357,54 +445,209 @@ Expected output:
 ```
 ================================ Human Message =================================
 
-I need to submit an expense report for a $150 dinner. What information do I need to provide?
+Write a SQL query to find all customers who made orders over $1000 in the last month
 ================================== Ai Message ==================================
 Tool Calls:
-  load_skill (call_pq6JpWMOvikULdhVauwFIFti)
- Call ID: call_pq6JpWMOvikULdhVauwFIFti
+  load_skill (call_abc123)
+ Call ID: call_abc123
   Args:
-    skill_name: expense_reporting
+    skill_name: sales_analytics
 ================================= Tool Message =================================
 Name: load_skill
 
-Loaded skill: expense_reporting
+Loaded skill: sales_analytics
 
-# Expense Reporting Skill
+# Sales Analytics Schema
 
-You help employees with expense reports. You can:
+## Tables
 
-1. **Submit expense reports**: Guide employees through submitting new expense reports
-   - Required fields: date, amount, category, description, receipt
-   - Categories: travel, meals, supplies, software, other
-   - Receipts must be attached for expenses over $25
+### customers
+- customer_id (PRIMARY KEY)
+- name
+- email
+- signup_date
+- status (active/inactive)
+- customer_tier (bronze/silver/gold/platinum)
 
-2. **Check status**: Look up the status of submitted expense reports
-   - Pending: awaiting manager approval
-   - Approved: approved and queued for payment
-   - Paid: reimbursement processed
-   - Rejected: needs revision (check rejection reason)
+### orders
+- order_id (PRIMARY KEY)
+- customer_id (FOREIGN KEY -> customers)
+- order_date
+- status (pending/completed/cancelled/refunded)
+- total_amount
+- sales_region (north/south/east/west)
 
-3. **Approval workflows**: Expenses under $100 auto-approve, over $100 need manager approval
+[... rest of schema ...]
 
-Always be specific about next steps and timelines (payments process weekly on Fridays).
+## Business Logic
+
+**High-value orders**: Orders with `total_amount > 1000`
+**Revenue calculation**: Only count orders with `status = 'completed'`
+
 ================================== Ai Message ==================================
 
-When submitting your expense report for the $150 dinner, the following information is required:
+Here's a SQL query to find all customers who made orders over $1000 in the last month:
 
-1. Date of the expense
-2. Amount of the expense - in this case $150
-3. Category of the expense - it looks like this would fall under 'meals'
-4. A description of the expense
-5. Receipt for the dinner (as it's over $25)
+\`\`\`sql
+SELECT DISTINCT
+    c.customer_id,
+    c.name,
+    c.email,
+    c.customer_tier
+FROM customers c
+JOIN orders o ON c.customer_id = o.customer_id
+WHERE o.total_amount > 1000
+  AND o.status = 'completed'
+  AND o.order_date >= CURRENT_DATE - INTERVAL '1 month'
+ORDER BY c.customer_id;
+\`\`\`
 
-Make sure your receipt clearly shows all these details. Given that the expense is over $100, it will need manager approval. Once approved, it will be queued for payment. Payments are processed weekly on Fridays.
+This query:
+- Joins customers with their orders
+- Filters for high-value orders (>$1000) using the total_amount field
+- Only includes completed orders (as per the business logic)
+- Restricts to orders from the last month
+- Returns distinct customers to avoid duplicates if they made multiple qualifying orders
 ```
 
-The agent saw the lightweight skill description in its system prompt, recognized the question was about expense reporting, called `load_skill("expense_reporting")` to get the full content, and then used that detailed knowledge to provide a comprehensive answer.
+The agent saw the lightweight skill description in its system prompt, recognized the question required sales database knowledge, called `load_skill("sales_analytics")` to get the full schema and business logic, and then used that information to write a correct query following the database conventions.
 
-## 6. Advanced: Enforce tools per skill with middleware
+## 6. Advanced: Add constraints with custom state
 
-[PLACEHOLDER: Show how to use custom middleware to enforce that certain tools are only available when specific skills are loaded. This goes beyond the basic prompt-based approach and adds rigid constraints. Example: when the expense_reporting skill is loaded, register expense-specific tools like submit_expense_report or check_expense_status. The middleware can track loaded_skills in state and conditionally register tools based on which skills are active.]
+You can add constraints to enforce that certain tools are only available after specific skills have been loaded. This requires tracking which skills have been loaded in custom agent state.
+
+### Define custom state
+
+First, extend the agent state to track loaded skills:
+
+```python
+from langchain.agents.middleware import AgentState
+
+class CustomState(AgentState):  # [!code highlight]
+    skills_loaded: NotRequired[list[str]]  # Track which skills have been loaded  # [!code highlight]
+```
+
+### Update load_skill to modify state
+
+Modify the `load_skill` tool to update state when a skill is loaded:
+
+```python
+from langgraph.types import Command  # [!code highlight]
+from langchain.tools import tool, ToolRuntime
+
+@tool
+def load_skill(skill_name: str, runtime: ToolRuntime) -> Command:  # [!code highlight]
+    """Load the full content of a skill into the agent's context.
+
+    Use this when you need detailed information about how to handle a specific
+    type of request. This will provide you with comprehensive instructions,
+    policies, and guidelines for the skill area.
+
+    Args:
+        skill_name: The name of the skill to load
+    """
+    # Find and return the requested skill
+    for skill in SKILLS:
+        if skill["name"] == skill_name:
+            skill_content = f"Loaded skill: {skill_name}\n\n{skill['content']}"
+
+            # Update state to track loaded skill
+            return Command(  # [!code highlight]
+                update={  # [!code highlight]
+                    "messages": [  # [!code highlight]
+                        {  # [!code highlight]
+                            "role": "tool",  # [!code highlight]
+                            "content": skill_content,  # [!code highlight]
+                            "tool_call_id": runtime.tool_call_id,  # [!code highlight]
+                        }  # [!code highlight]
+                    ],  # [!code highlight]
+                    "skills_loaded": [skill_name],  # [!code highlight]
+                }  # [!code highlight]
+            )  # [!code highlight]
+
+    # Skill not found
+    available = ", ".join(s["name"] for s in SKILLS)
+    return Command(
+        update={
+            "messages": [
+                {
+                    "role": "tool",
+                    "content": f"Skill '{skill_name}' not found. Available skills: {available}",
+                    "tool_call_id": runtime.tool_call_id,
+                }
+            ]
+        }
+    )
+```
+
+### Create constrained tool
+
+Create a tool that's only usable after a specific skill has been loaded:
+
+```python
+@tool
+def write_sql_query(  # [!code highlight]
+    query: str,
+    vertical: str,
+    runtime: ToolRuntime,
+) -> str:
+    """Write and validate a SQL query for a specific business vertical.
+
+    This tool helps format and validate SQL queries. You must load the
+    appropriate skill first to understand the database schema.
+
+    Args:
+        query: The SQL query to write
+        vertical: The business vertical (sales_analytics or inventory_management)
+    """
+    # Check if the required skill has been loaded
+    skills_loaded = runtime.state.get("skills_loaded", [])  # [!code highlight]
+
+    if vertical not in skills_loaded:  # [!code highlight]
+        return (  # [!code highlight]
+            f"Error: You must load the '{vertical}' skill first "  # [!code highlight]
+            f"to understand the database schema before writing queries. "  # [!code highlight]
+            f"Use load_skill('{vertical}') to load the schema."  # [!code highlight]
+        )  # [!code highlight]
+
+    # Validate and format the query
+    return (
+        f"SQL Query for {vertical}:\n\n"
+        f"```sql\n{query}\n```\n\n"
+        f"✓ Query validated against {vertical} schema\n"
+        f"Ready to execute against the database."
+    )
+```
+
+### Update middleware and agent
+
+Update the middleware to use the custom state schema:
+
+```python
+class SkillMiddleware(AgentMiddleware[CustomState]):  # [!code highlight]
+    """Middleware that injects skill descriptions into the system prompt."""
+
+    state_schema = CustomState  # [!code highlight]
+    tools = [load_skill, write_sql_query]  # [!code highlight]
+
+    # ... rest of the middleware implementation stays the same
+```
+
+Create the agent with the middleware that registers the constrained tool:
+
+```python
+agent = create_agent(
+    model,
+    system_prompt=(
+        "You are a SQL query assistant that helps users "
+        "write queries against business databases."
+    ),
+    middleware=[SkillMiddleware()],  # [!code highlight]
+    checkpointer=InMemorySaver(),
+)
+```
+
+Now if the agent tries to use `write_sql_query` before loading the required skill, it will receive an error message prompting it to load the appropriate skill (e.g., `sales_analytics` or `inventory_management`) first. This ensures the agent has the necessary schema knowledge before attempting to validate queries.
 
 ## Complete example
 
@@ -417,21 +660,60 @@ This tutorial implemented skills as in-memory Python dictionaries loaded through
 **Storage backends:**
 - **In-memory** (this tutorial): Skills defined as Python data structures, fast access, no I/O overhead
 - **File system** (Claude Code approach): Skills as directories with files, discovered via file operations like `read_file`
-- **Remote storage**: Skills in S3, databases, or APIs, fetched on-demand
-- **Hybrid**: Skill descriptions in-memory, full content fetched from remote storage
+- **Remote storage**: Skills in S3, databases, Notion, or APIs, fetched on-demand
 
-**Discovery mechanisms:**
-- **Direct loading**: If skills are small, load them directly without separate discovery steps
-- **Two-phase**: List available skills first, then load specific ones (used in this tutorial)
+**Skill discovery** (how the agent learns which skills exist):
+- **System prompt listing**: Skill descriptions in system prompt (used in this tutorial)
 - **File-based**: Discover skills by scanning directories (Claude Code approach)
-- **Registry-based**: Query a skill registry service for available skills
+- **Registry-based**: Query a skill registry service or API for available skills
+- **Dynamic lookup**: List available skills via a tool call
 
-**Size considerations:**
-- **Small skills** (< 1KB): Can be loaded directly or even included in system prompt
-- **Medium skills** (1-10KB): Benefit from progressive disclosure (this tutorial)
-- **Large skills** (> 10KB): May need chunking, summarization, or selective loading
+**Progressive disclosure strategies** (how skill content is loaded):
+- **Single load**: Load entire skill content in one tool call (used in this tutorial)
+- **Paginated**: Load skill content in multiple pages/chunks for large skills
+- **Search-based**: Search within a specific skill's content for relevant sections (e.g., using grep/read operations on skill files)
+- **Hierarchical**: Load skill overview first, then drill into specific subsections
+
+**Size considerations** (uncalibrated mental model - optimize for your system):
+- **Small skills** (< 1K tokens / ~750 words): Can be included directly in system prompt and cached with prompt caching for cost savings and faster responses
+- **Medium skills** (1-10K tokens / ~750-7.5K words): Benefit from on-demand loading to avoid context overhead (this tutorial)
+- **Large skills** (> 10K tokens / ~7.5K words, or > 5-10% of context window): Should use progressive disclosure techniques like pagination, search-based loading, or hierarchical exploration to avoid consuming excessive context
 
 The choice depends on your requirements: in-memory is fastest but requires redeployment for skill updates, while file-based or remote storage enables dynamic skill management without code changes.
+
+## Progressive disclosure and context engineering
+
+Progressive disclosure is fundamentally a **context engineering technique** - you're managing what information is available to the agent and when. This tutorial focused on loading database schemas, but the same principles apply to other types of context.
+
+### Combining with few-shot prompting
+
+For the SQL query use case, you could extend progressive disclosure to dynamically load **few-shot examples** that match the user's query:
+
+**Example approach:**
+1. User asks: "Find customers who haven't ordered in 6 months"
+2. Agent loads `sales_analytics` schema (as shown in this tutorial)
+3. Agent also loads 2-3 relevant example queries:
+   - Query for finding inactive customers
+   - Query with date-based filtering
+   - Query joining customers and orders tables
+4. Agent writes query using both schema knowledge AND example patterns
+
+**Implementation strategies:**
+- **Semantic search**: Embed example queries and retrieve the most similar ones based on user query
+- **Tag-based lookup**: Tag examples by pattern (joins, aggregations, date filters) and load relevant tags
+- **Hybrid**: Load schema first, then search examples within that skill's domain
+
+**Benefits:**
+- **Better query quality**: Examples demonstrate patterns, idioms, and edge cases
+- **Consistency**: Examples enforce coding standards and best practices
+- **Reduced hallucination**: Concrete examples ground the agent's responses
+
+**Trade-offs:**
+- Additional latency from example retrieval
+- More complex implementation (requires example storage and search)
+- Context window usage increases with examples
+
+This combination of progressive disclosure (loading schemas on-demand) and dynamic few-shot prompting (loading relevant examples) creates a powerful context engineering pattern that scales to large knowledge bases while providing high-quality, grounded outputs.
 
 ## Next steps
 
