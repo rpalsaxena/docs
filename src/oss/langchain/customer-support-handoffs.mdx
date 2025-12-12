@@ -212,14 +212,14 @@ def record_issue_type(
 
 
 @tool
-def escalate_to_human(reason: str, _runtime: ToolRuntime[None, SupportState]) -> str:
+def escalate_to_human(reason: str) -> str:
     """Escalate the case to a human support specialist."""
     # In a real system, this would create a ticket, notify staff, etc.
     return f"Escalating to human support. Reason: {reason}"
 
 
 @tool
-def provide_solution(solution: str, _runtime: ToolRuntime[None, SupportState]) -> str:
+def provide_solution(solution: str) -> str:
     """Provide a solution to the customer's issue."""
     return f"Solution provided: {solution}"
 ```
@@ -386,9 +386,11 @@ Test the complete handoff workflow:
 
 ```python
 from langchain.messages import HumanMessage
+import uuid
 
 # Configuration for this conversation thread
-config = {"configurable": {"thread_id": "support-001"}}
+thread_id = str(uuid.uuid4())
+config = {"configurable": {"thread_id": thread_id}}
 
 # Turn 1: Initial message - starts with warranty_collector step
 print("=== Turn 1: Warranty Collection ===")
@@ -396,7 +398,8 @@ result = agent.invoke(
     {"messages": [HumanMessage("Hi, my phone screen is cracked")]},
     config
 )
-print(result["messages"][-1].content)
+for msg in result['messages']:
+    msg.pretty_print()
 
 # Turn 2: User responds about warranty
 print("\n=== Turn 2: Warranty Response ===")
@@ -404,7 +407,8 @@ result = agent.invoke(
     {"messages": [HumanMessage("Yes, it's still under warranty")]},
     config
 )
-print(result["messages"][-1].content)
+for msg in result['messages']:
+    msg.pretty_print()
 print(f"Current step: {result.get('current_step')}")
 
 # Turn 3: User describes the issue
@@ -413,7 +417,8 @@ result = agent.invoke(
     {"messages": [HumanMessage("The screen is physically cracked from dropping it")]},
     config
 )
-print(result["messages"][-1].content)
+for msg in result['messages']:
+    msg.pretty_print()
 print(f"Current step: {result.get('current_step')}")
 
 # Turn 4: Resolution
@@ -422,7 +427,8 @@ result = agent.invoke(
     {"messages": [HumanMessage("What should I do?")]},
     config
 )
-print(result["messages"][-1].content)
+for msg in result['messages']:
+    msg.pretty_print()
 ```
 
 Expected flow:
@@ -513,13 +519,13 @@ Add "go back" tools to the resolution step:
 
 ```python
 @tool
-def go_back_to_warranty(runtime: ToolRuntime[None, SupportState]) -> Command:  # [!code highlight]
+def go_back_to_warranty() -> Command:  # [!code highlight]
     """Go back to warranty verification step."""
     return Command(update={"current_step": "warranty_collector"})  # [!code highlight]
 
 
 @tool
-def go_back_to_classification(runtime: ToolRuntime[None, SupportState]) -> Command:  # [!code highlight]
+def go_back_to_classification() -> Command:  # [!code highlight]
     """Go back to issue classification step."""
     return Command(update={"current_step": "issue_classifier"})  # [!code highlight]
 
@@ -574,6 +580,8 @@ This example demonstrates the handoffs pattern.
 A single agent dynamically changes its behavior based on the current_step state,
 creating a state machine for sequential information collection.
 """
+
+import uuid
 
 from langgraph.checkpoint.memory import InMemorySaver
 from langgraph.types import Command
@@ -642,14 +650,14 @@ def record_issue_type(
 
 
 @tool
-def escalate_to_human(reason: str, _runtime: ToolRuntime[None, SupportState]) -> str:
+def escalate_to_human(reason: str) -> str:
     """Escalate the case to a human support specialist."""
     # In a real system, this would create a ticket, notify staff, etc.
     return f"Escalating to human support. Reason: {reason}"
 
 
 @tool
-def provide_solution(solution: str, _runtime: ToolRuntime[None, SupportState]) -> str:
+def provide_solution(solution: str) -> str:
     """Provide a solution to the customer's issue."""
     return f"Solution provided: {solution}"
 
@@ -771,37 +779,30 @@ agent = create_agent(
 # ============================================================================
 
 if __name__ == "__main__":
-    config = {"configurable": {"thread_id": "support-001"}}
+    thread_id = str(uuid.uuid4())
+    config = {"configurable": {"thread_id": thread_id}}
 
-    print("=== Turn 1: Initial Contact ===")
     result = agent.invoke(
         {"messages": [HumanMessage("Hi, my phone screen is cracked")]},
         config
     )
-    print(f"Bot: {result['messages'][-1].content}\n")
 
-    print("=== Turn 2: Warranty Response ===")
     result = agent.invoke(
         {"messages": [HumanMessage("Yes, it's still under warranty")]},
         config
     )
-    print(f"Bot: {result['messages'][-1].content}")
-    print(f"State: current_step={result.get('current_step')}, warranty={result.get('warranty_status')}\n")
 
-    print("=== Turn 3: Issue Description ===")
     result = agent.invoke(
         {"messages": [HumanMessage("The screen is physically cracked from dropping it")]},
         config
     )
-    print(f"Bot: {result['messages'][-1].content}")
-    print(f"State: current_step={result.get('current_step')}, issue_type={result.get('issue_type')}\n")
 
-    print("=== Turn 4: Resolution ===")
     result = agent.invoke(
         {"messages": [HumanMessage("What should I do?")]},
         config
     )
-    print(f"Bot: {result['messages'][-1].content}\n")
+    for msg in result['messages']:
+        msg.pretty_print()
 ```
 
 </Expandable>
