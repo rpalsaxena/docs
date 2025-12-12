@@ -3,7 +3,10 @@ title: Build a customer support agent with handoffs
 sidebarTitle: Customer support handoffs
 ---
 
-The [handoffs pattern](/oss/langchain/multi-agent#handoffs) is a multi-agent architecture where agents pass control to each other through state transitions. This tutorial demonstrates how to build an online customer support system where different "agents" (really, different configurations of a single agent) handle specific stages of the support workflow.
+import ChatModelTabsPy from '/snippets/chat-model-tabs.mdx';
+import ChatModelTabsJs from '/snippets/chat-model-tabs-js.mdx';
+
+The [handoffs pattern](/oss/langchain/multi-agent#handoffs) describes workflows where an agent's behavior changes as it moves through different steps of a task. This tutorial shows how to implement handoffs by using tool calls to dynamically change a single agent's configuration—updating its available tools and instructions at each step based on what happened earlier in the conversation.
 
 In this tutorial, you'll build a customer support agent that does the following:
 
@@ -12,11 +15,16 @@ In this tutorial, you'll build a customer support agent that does the following:
 - Provides solutions or escalates to human support.
 - Maintains conversation state across multiple turns.
 
-Unlike the [supervisor pattern](/oss/langchain/supervisor) where sub-agents are called as tools, handoffs create a **state machine** where the active stage changes based on workflow progress. Each "stage" is just a different configuration (system prompt + tools) of the same underlying agent, selected dynamically based on state.
+Unlike the [supervisor pattern](/oss/langchain/supervisor) where sub-agents are called as tools, handoffs create a **state machine** where the active step changes based on workflow progress. Each "step" is just a different configuration (system prompt + tools) of the same underlying agent, selected dynamically based on state.
+
+<Tip>
+**A note on terminology**: This tutorial uses "steps" to describe where we are in the workflow. If you've implemented this kind of flow in the past using distinct agents, you could also think of this as an "active_agent" field that switches between configurations.
+</Tip>
 
 Here's the workflow we'll build:
 
 ```mermaid
+%%{init: {'theme':'base', 'themeVariables': {'primaryColor':'#4CAF50','primaryTextColor':'#fff','primaryBorderColor':'#2E7D32','lineColor':'#666','secondaryColor':'#FF9800','tertiaryColor':'#2196F3'}}}%%
 flowchart TD
     %% Start
     Start([💬 Customer reports<br>an issue]) --> Warranty{Is the device<br>under warranty?}
@@ -39,84 +47,124 @@ flowchart TD
     Escalate --> Close
 
     %% === Styling ===
-    classDef decisionNode fill:#e1f5fe,stroke:#0277bd,stroke-width:2px
-    classDef actionNode fill:#fff3e0,stroke:#f57c00,stroke-width:2px
-    classDef escalateNode fill:#ffebee,stroke:#d32f2f,stroke-width:2px
-    classDef endNode fill:#e8f5e8,stroke:#388e3c,stroke-width:2px
+    classDef startEnd fill:#4CAF50,stroke:#2E7D32,stroke-width:2px,color:#fff
+    classDef decisionNode fill:#2196F3,stroke:#1565C0,stroke-width:2px,color:#fff
+    classDef actionNode fill:#FF9800,stroke:#E65100,stroke-width:2px,color:#fff
+    classDef escalateNode fill:#f44336,stroke:#c62828,stroke-width:2px,color:#fff
 
+    class Start,Close startEnd
     class Warranty,IssueType,OutOfWarranty decisionNode
     class Repair,Troubleshoot actionNode
     class Escalate escalateNode
-    class Close endNode
 ```
 
 ## Setup
 
-1. Install the `langchain` package:
+### Installation
 
-    <CodeGroup>
-    ```bash pip
-    pip install langchain
-    ```
-    ```bash conda
-    conda install langchain -c conda-forge
-    ```
-    </CodeGroup>
+This tutorial requires the `langchain` package:
 
-    For more details, see our [Installation guide](/oss/langchain/install).
+:::python
+<CodeGroup>
+```bash pip
+pip install langchain
+```
+```bash uv
+uv add langchain
+```
+```bash conda
+conda install langchain -c conda-forge
+```
+</CodeGroup>
+:::
 
-2. Set up [LangSmith](https://smith.langchain.com) to inspect what is happening inside your agent:
+:::js
+<CodeGroup>
+```bash npm
+npm install langchain
+```
+```bash yarn
+yarn add langchain
+```
+```bash pnpm
+pnpm add langchain
+```
+</CodeGroup>
+:::
 
-    <CodeGroup>
-    ```bash bash
-    export LANGSMITH_TRACING="true"
-    export LANGSMITH_API_KEY="..."
-    ```
-    ```python python
-    import getpass
-    import os
+For more details, see our [Installation guide](/oss/langchain/install).
 
-    os.environ["LANGSMITH_TRACING"] = "true"
-    os.environ["LANGSMITH_API_KEY"] = getpass.getpass()
-    ```
-    </CodeGroup>
+### LangSmith
 
-3. Select a chat model. For this tutorial, we'll use Claude 3.5 Sonnet:
+Set up [LangSmith](https://smith.langchain.com) to inspect what is happening inside your agent. Then set the following environment variables:
 
-    <CodeGroup>
-    ```python python
-    from langchain.chat_models import init_chat_model
+:::python
+<CodeGroup>
+```bash bash
+export LANGSMITH_TRACING="true"
+export LANGSMITH_API_KEY="..."
+```
+```python python
+import getpass
+import os
 
-    model = init_chat_model("anthropic:claude-3-5-sonnet-latest")
-    ```
-    </CodeGroup>
+os.environ["LANGSMITH_TRACING"] = "true"
+os.environ["LANGSMITH_API_KEY"] = getpass.getpass()
+```
+</CodeGroup>
+:::
+
+:::js
+<CodeGroup>
+```bash bash
+export LANGSMITH_TRACING="true"
+export LANGSMITH_API_KEY="..."
+```
+```typescript typescript
+process.env.LANGSMITH_TRACING = "true";
+process.env.LANGSMITH_API_KEY = "...";
+```
+</CodeGroup>
+:::
+
+### Select an LLM
+
+Select a chat model from LangChain's suite of integrations:
+
+:::python
+<ChatModelTabsPy />
+:::
+
+:::js
+<ChatModelTabsJs />
+:::
 
 ## 1. Define custom state
 
-First, define a custom state schema that tracks which stage is currently active:
+First, define a custom state schema that tracks which step is currently active:
 
 ```python
 from langchain.agents import AgentState
 from typing_extensions import NotRequired
 from typing import Literal
 
-# Define the possible workflow stages
-SupportStage = Literal["warranty_collector", "issue_classifier", "resolution_specialist"]
+# Define the possible workflow steps
+SupportStep = Literal["warranty_collector", "issue_classifier", "resolution_specialist"]  # [!code highlight]
 
-class SupportState(AgentState):
+class SupportState(AgentState):  # [!code highlight]
     """State for customer support workflow with handoffs."""
-    current_stage: NotRequired[SupportStage]
+    current_step: NotRequired[SupportStep]  # [!code highlight]
     warranty_status: NotRequired[Literal["in_warranty", "out_of_warranty"]]
     issue_type: NotRequired[Literal["hardware", "software"]]
 ```
 
-The `current_stage` field is the core of the handoffs pattern - it determines which configuration (prompt + tools) is loaded on each turn.
+The `current_step` field is the core of the handoffs pattern - it determines which configuration (prompt + tools) is loaded on each turn.
 
 ## 2. Create handoff tools
 
-Create tools that update the workflow state. These tools allow the agent to record information and transition to the next stage.
+Create tools that update the workflow state. These tools allow the agent to record information and transition to the next step.
 
-The key to handoffs is using `Command` to update state, including the `current_stage` field:
+The key to handoffs is using `Command` to update state, including the `current_step` field:
 
 ```python
 from langchain.tools import tool, ToolRuntime
@@ -127,10 +175,10 @@ from langgraph.types import Command
 def record_warranty_status(
     status: Literal["in_warranty", "out_of_warranty"],
     runtime: ToolRuntime[None, SupportState],
-) -> Command:
+) -> Command:  # [!code highlight]
     """Record the customer's warranty status and transition to issue classification."""
-    return Command(
-        update={
+    return Command(  # [!code highlight]
+        update={  # [!code highlight]
             "messages": [
                 ToolMessage(
                     content=f"Warranty status recorded as: {status}",
@@ -138,7 +186,7 @@ def record_warranty_status(
                 )
             ],
             "warranty_status": status,
-            "current_stage": "issue_classifier",  # Transition to next stage
+            "current_step": "issue_classifier",  # [!code highlight]
         }
     )
 
@@ -147,10 +195,10 @@ def record_warranty_status(
 def record_issue_type(
     issue_type: Literal["hardware", "software"],
     runtime: ToolRuntime[None, SupportState],
-) -> Command:
+) -> Command:  # [!code highlight]
     """Record the type of issue and transition to resolution specialist."""
-    return Command(
-        update={
+    return Command(  # [!code highlight]
+        update={  # [!code highlight]
             "messages": [
                 ToolMessage(
                     content=f"Issue type recorded as: {issue_type}",
@@ -158,29 +206,31 @@ def record_issue_type(
                 )
             ],
             "issue_type": issue_type,
-            "current_stage": "resolution_specialist",  # Transition to next stage
+            "current_step": "resolution_specialist",  # [!code highlight]
         }
     )
 
 
 @tool
-def escalate_to_human(reason: str, _runtime: ToolRuntime[None, SupportState]) -> str:
+def escalate_to_human(reason: str) -> str:
     """Escalate the case to a human support specialist."""
     # In a real system, this would create a ticket, notify staff, etc.
     return f"Escalating to human support. Reason: {reason}"
 
 
 @tool
-def provide_solution(solution: str, _runtime: ToolRuntime[None, SupportState]) -> str:
+def provide_solution(solution: str) -> str:
     """Provide a solution to the customer's issue."""
     return f"Solution provided: {solution}"
 ```
 
-Notice how `record_warranty_status` and `record_issue_type` return `Command` objects that update both the data (`warranty_status`, `issue_type`) AND the `current_stage`. This is the handoff mechanism - tools control the workflow.
+Notice how `record_warranty_status` and `record_issue_type` return `Command` objects that update both the data (`warranty_status`, `issue_type`) AND the `current_step`. This is the handoff mechanism - tools control the workflow.
 
-## 3. Define stage configurations
+## 3. Define step configurations
 
-Now define prompts and tools for each stage. We'll use a simple dictionary to map stage names to their configurations:
+Define prompts and tools for each step. First, define the prompts for each step:
+
+<Accordion title="View complete prompt definitions">
 
 ```python
 # Define prompts as constants for easy reference
@@ -188,10 +238,10 @@ WARRANTY_COLLECTOR_PROMPT = """You are a customer support agent helping with dev
 
 CURRENT STAGE: Warranty verification
 
-At this stage, you need to:
+At this step, you need to:
 1. Greet the customer warmly
 2. Ask if their device is under warranty
-3. Use record_warranty_status to record their response and move to the next stage
+3. Use record_warranty_status to record their response and move to the next step
 
 Be conversational and friendly. Don't ask multiple questions at once."""
 
@@ -200,10 +250,10 @@ ISSUE_CLASSIFIER_PROMPT = """You are a customer support agent helping with devic
 CURRENT STAGE: Issue classification
 CUSTOMER INFO: Warranty status is {warranty_status}
 
-At this stage, you need to:
+At this step, you need to:
 1. Ask the customer to describe their issue
 2. Determine if it's a hardware issue (physical damage, broken parts) or software issue (app crashes, performance)
-3. Use record_issue_type to record the classification and move to the next stage
+3. Use record_issue_type to record the classification and move to the next step
 
 If unclear, ask clarifying questions before classifying."""
 
@@ -212,17 +262,22 @@ RESOLUTION_SPECIALIST_PROMPT = """You are a customer support agent helping with 
 CURRENT STAGE: Resolution
 CUSTOMER INFO: Warranty status is {warranty_status}, issue type is {issue_type}
 
-At this stage, you need to:
+At this step, you need to:
 1. For SOFTWARE issues: provide troubleshooting steps using provide_solution
 2. For HARDWARE issues:
    - If IN WARRANTY: explain warranty repair process using provide_solution
    - If OUT OF WARRANTY: escalate_to_human for paid repair options
 
 Be specific and helpful in your solutions."""
+```
 
+</Accordion>
 
-# Stage configuration: maps stage name to (prompt_template, tools, required_state)
-STAGE_CONFIG = {
+Then map step names to their configurations using a dictionary:
+
+```python
+# Step configuration: maps step name to (prompt, tools, required_state)
+STEP_CONFIG = {
     "warranty_collector": {
         "prompt": WARRANTY_COLLECTOR_PROMPT,
         "tools": [record_warranty_status],
@@ -242,53 +297,53 @@ STAGE_CONFIG = {
 ```
 
 This dictionary-based configuration makes it easy to:
-- See all stages at a glance
-- Add new stages (just add another entry)
+- See all steps at a glance
+- Add new steps (just add another entry)
 - Understand the workflow dependencies (`requires` field)
 - Use prompt templates with state variables (e.g., `{warranty_status}`)
 
-## 4. Create stage-based middleware
+## 4. Create step-based middleware
 
-Create middleware that reads `current_stage` from state and applies the appropriate configuration. We'll use the `@wrap_model_call` decorator for a clean implementation:
+Create middleware that reads `current_step` from state and applies the appropriate configuration. We'll use the `@wrap_model_call` decorator for a clean implementation:
 
 ```python
 from langchain.agents.middleware import wrap_model_call, ModelRequest, ModelResponse
 from typing import Callable
 
 
-@wrap_model_call
-async def apply_stage_config(
+@wrap_model_call  # [!code highlight]
+def apply_step_config(
     request: ModelRequest,
     handler: Callable[[ModelRequest], ModelResponse],
 ) -> ModelResponse:
-    """Configure agent behavior based on the current stage."""
-    # Get current stage (defaults to warranty_collector for first interaction)
-    current_stage = request.state.get("current_stage", "warranty_collector")
+    """Configure agent behavior based on the current step."""
+    # Get current step (defaults to warranty_collector for first interaction)
+    current_step = request.state.get("current_step", "warranty_collector")  # [!code highlight]
 
-    # Look up stage configuration
-    stage_config = STAGE_CONFIG[current_stage]
+    # Look up step configuration
+    stage_config = STEP_CONFIG[current_step]  # [!code highlight]
 
     # Validate required state exists
     for key in stage_config["requires"]:
         if request.state.get(key) is None:
-            raise ValueError(f"{key} must be set before reaching {current_stage}")
+            raise ValueError(f"{key} must be set before reaching {current_step}")
 
     # Format prompt with state values (supports {warranty_status}, {issue_type}, etc.)
     system_prompt = stage_config["prompt"].format(**request.state)
 
-    # Inject system prompt and stage-specific tools
-    request = request.override(
-        system_prompt=system_prompt,
-        tools=stage_config["tools"],
+    # Inject system prompt and step-specific tools
+    request = request.override(  # [!code highlight]
+        system_prompt=system_prompt,  # [!code highlight]
+        tools=stage_config["tools"],  # [!code highlight]
     )
 
-    return await handler(request)
+    return handler(request)
 ```
 
 This middleware:
 
-1. **Reads current stage**: Gets `current_stage` from state (defaults to "warranty_collector").
-2. **Looks up configuration**: Finds the matching entry in `STAGE_CONFIG`.
+1. **Reads current step**: Gets `current_step` from state (defaults to "warranty_collector").
+2. **Looks up configuration**: Finds the matching entry in `STEP_CONFIG`.
 3. **Validates dependencies**: Ensures required state fields exist.
 4. **Formats prompt**: Injects state values into the prompt template.
 5. **Applies configuration**: Overrides the system prompt and available tools.
@@ -297,13 +352,13 @@ The `request.override()` method is key - it allows us to dynamically change the 
 
 ## 5. Create the agent
 
-Now create the agent with the stage-based middleware and a checkpointer for state persistence:
+Now create the agent with the step-based middleware and a checkpointer for state persistence:
 
 ```python
 from langchain.agents import create_agent
 from langgraph.checkpoint.memory import InMemorySaver
 
-# Collect all tools from all stage configurations
+# Collect all tools from all step configurations
 all_tools = [
     record_warranty_status,
     record_issue_type,
@@ -311,18 +366,18 @@ all_tools = [
     escalate_to_human,
 ]
 
-# Create the agent with stage-based configuration
+# Create the agent with step-based configuration
 agent = create_agent(
     model,
     tools=all_tools,
-    state_schema=SupportState,
-    middleware=[apply_stage_config],  # Single middleware handles all stages
-    checkpointer=InMemorySaver(),  # Required for state persistence across turns
+    state_schema=SupportState,  # [!code highlight]
+    middleware=[apply_step_config],  # [!code highlight]
+    checkpointer=InMemorySaver(),  # [!code highlight]
 )
 ```
 
 <Note>
-**Why a checkpointer?** The checkpointer maintains state across conversation turns. Without it, the `current_stage` state would be lost between user messages, breaking the handoff flow.
+**Why a checkpointer?** The checkpointer maintains state across conversation turns. Without it, the `current_step` state would be lost between user messages, breaking the handoff flow.
 </Note>
 
 ## 6. Test the workflow
@@ -331,17 +386,20 @@ Test the complete handoff workflow:
 
 ```python
 from langchain.messages import HumanMessage
+import uuid
 
 # Configuration for this conversation thread
-config = {"configurable": {"thread_id": "support-001"}}
+thread_id = str(uuid.uuid4())
+config = {"configurable": {"thread_id": thread_id}}
 
-# Turn 1: Initial message - starts with warranty_collector stage
+# Turn 1: Initial message - starts with warranty_collector step
 print("=== Turn 1: Warranty Collection ===")
 result = agent.invoke(
     {"messages": [HumanMessage("Hi, my phone screen is cracked")]},
     config
 )
-print(result["messages"][-1].content)
+for msg in result['messages']:
+    msg.pretty_print()
 
 # Turn 2: User responds about warranty
 print("\n=== Turn 2: Warranty Response ===")
@@ -349,8 +407,9 @@ result = agent.invoke(
     {"messages": [HumanMessage("Yes, it's still under warranty")]},
     config
 )
-print(result["messages"][-1].content)
-print(f"Current stage: {result.get('current_stage')}")
+for msg in result['messages']:
+    msg.pretty_print()
+print(f"Current step: {result.get('current_step')}")
 
 # Turn 3: User describes the issue
 print("\n=== Turn 3: Issue Description ===")
@@ -358,8 +417,9 @@ result = agent.invoke(
     {"messages": [HumanMessage("The screen is physically cracked from dropping it")]},
     config
 )
-print(result["messages"][-1].content)
-print(f"Current stage: {result.get('current_stage')}")
+for msg in result['messages']:
+    msg.pretty_print()
+print(f"Current step: {result.get('current_step')}")
 
 # Turn 4: Resolution
 print("\n=== Turn 4: Resolution ===")
@@ -367,13 +427,14 @@ result = agent.invoke(
     {"messages": [HumanMessage("What should I do?")]},
     config
 )
-print(result["messages"][-1].content)
+for msg in result['messages']:
+    msg.pretty_print()
 ```
 
 Expected flow:
-1. **Warranty verification stage**: Asks about warranty status
-2. **Issue classification stage**: Asks about the problem, determines it's hardware
-3. **Resolution stage**: Provides warranty repair instructions
+1. **Warranty verification step**: Asks about warranty status
+2. **Issue classification step**: Asks about the problem, determines it's hardware
+3. **Resolution step**: Provides warranty repair instructions
 
 ## 7. Understanding the handoff mechanism
 
@@ -383,7 +444,7 @@ Let's trace what happens at each turn:
 ```python
 {
     "messages": [HumanMessage("Hi, my phone screen is cracked")],
-    "current_stage": "warranty_collector"  # Default value
+    "current_step": "warranty_collector"  # Default value
 }
 ```
 
@@ -396,7 +457,7 @@ Tool call: `record_warranty_status("in_warranty")` returns:
 ```python
 Command(update={
     "warranty_status": "in_warranty",
-    "current_stage": "issue_classifier"  # State transition!
+    "current_step": "issue_classifier"  # State transition!
 })
 ```
 
@@ -409,7 +470,7 @@ Tool call: `record_issue_type("hardware")` returns:
 ```python
 Command(update={
     "issue_type": "hardware",
-    "current_stage": "resolution_specialist"  # State transition!
+    "current_step": "resolution_specialist"  # State transition!
 })
 ```
 
@@ -417,113 +478,60 @@ Next turn, middleware applies:
 - System prompt: `RESOLUTION_SPECIALIST_PROMPT` (formatted with `warranty_status` and `issue_type`)
 - Tools: `[provide_solution, escalate_to_human]`
 
-The key insight: **Tools drive the workflow** by updating `current_stage`, and **middleware responds** by applying the appropriate configuration.
+The key insight: **Tools drive the workflow** by updating `current_step`, and **middleware responds** by applying the appropriate configuration.
 
 ## 8. Manage message history
 
-A critical aspect of production handoffs is managing what each agent sees in the conversation history. Without proper management, message history grows unbounded and agents can get confused by conversations from other stages.
-
-After a few agent transitions, the full message history includes conversations from all previous agents. The key is to **separate message history from cross-agent memory**:
-
-- **Message history**: Agent-scoped, bounded, ephemeral (what the agent sees)
-- **State dict**: Cross-agent, persistent, structured data (what the agent knows)
-- **System messages**: Bridge between state and context (injected summaries)
-
-Use `@before_model` middleware to trim messages before each agent sees them:
+As the agent progresses through steps, message history grows. Use [summarization middleware](/oss/langchain/short-term-memory#summarize-messages) to compress earlier messages while preserving conversational context:
 
 ```python
-from langchain.agents.middleware import before_model
-from langchain.messages import RemoveMessage
-from langgraph.graph.message import REMOVE_ALL_MESSAGES
+from langchain.agents import create_agent
+from langchain.agents.middleware import SummarizationMiddleware  # [!code highlight]
+from langgraph.checkpoint.memory import InMemorySaver
 
-@before_model
-def scope_messages_to_agent(state: SupportState, runtime: Runtime) -> dict | None:
-    """Keep only recent messages for the current agent."""
-    messages = state["messages"]
-
-    # Keep only last 4-5 messages (2-3 conversation turns)
-    if len(messages) <= 5:
-        return None
-
-    # Keep first message and recent messages
-    first_msg = messages[0]
-    recent_messages = messages[-4:]
-    new_messages = [first_msg] + recent_messages
-
-    return {
-        "messages": [
-            RemoveMessage(id=REMOVE_ALL_MESSAGES),
-            *new_messages
-        ]
-    }
-
-# Add to agent middleware
 agent = create_agent(
     model,
     tools=all_tools,
     state_schema=SupportState,
-    middleware=[apply_stage_config, scope_messages_to_agent],  # Add scoping
+    middleware=[
+        apply_step_config,
+        SummarizationMiddleware(  # [!code highlight]
+            model="gpt-4o-mini",
+            trigger=("tokens", 4000),
+            keep=("messages", 10)
+        )
+    ],
     checkpointer=InMemorySaver(),
 )
 ```
 
-Since agents only see recent messages, inject context about what previous agents learned via the system prompt:
-
-```python
-@wrap_model_call
-async def apply_stage_config(
-    request: ModelRequest,
-    handler: Callable[[ModelRequest], ModelResponse],
-) -> ModelResponse:
-    """Configure agent behavior based on the current stage."""
-    current_stage = request.state.get("current_stage", "warranty_collector")
-    stage_config = STAGE_CONFIG[current_stage]
-
-    # Validate required state exists
-    for key in stage_config["requires"]:
-        if request.state.get(key) is None:
-            raise ValueError(f"{key} must be set before reaching {current_stage}")
-
-    # Build context summary from state
-    context_summary = ""
-    if request.state.get("warranty_status"):
-        context_summary += f"\nPrevious agents collected: Warranty status is {request.state['warranty_status']}"
-    if request.state.get("issue_type"):
-        context_summary += f", issue type is {request.state['issue_type']}"
-
-    # Format prompt with state values and add context summary
-    system_prompt = stage_config["prompt"].format(**request.state)
-    if context_summary:
-        system_prompt += context_summary
-
-    # Inject system prompt and stage-specific tools
-    request = request.override(
-        system_prompt=system_prompt,
-        tools=stage_config["tools"],
-    )
-
-    return await handler(request)
-```
+See the [short-term memory guide](/oss/langchain/short-term-memory) for other memory management techniques.
 
 ## 9. Add flexibility: Go back
 
-A key UX requirement is allowing users to correct mistakes. Add "go back" tools:
+Some workflows need to allow users to return to previous steps to correct information (e.g., changing warranty status or issue classification). However, not all transitions make sense—for example, you typically can't go back once a refund has been processed. For this support workflow, we'll add tools to return to the warranty verification and issue classification steps.
+
+<Tip>
+If your workflow requires arbitrary transitions between most steps, consider whether you need a structured workflow at all. The handoffs pattern works best when steps follow a clear sequential progression with occasional backwards transitions for corrections.
+</Tip>
+
+Add "go back" tools to the resolution step:
 
 ```python
 @tool
-def go_back_to_warranty(runtime: ToolRuntime[None, SupportState]) -> Command:
+def go_back_to_warranty() -> Command:  # [!code highlight]
     """Go back to warranty verification step."""
-    return Command(update={"current_stage": "warranty_collector"})
+    return Command(update={"current_step": "warranty_collector"})  # [!code highlight]
 
 
 @tool
-def go_back_to_classification(runtime: ToolRuntime[None, SupportState]) -> Command:
+def go_back_to_classification() -> Command:  # [!code highlight]
     """Go back to issue classification step."""
-    return Command(update={"current_stage": "issue_classifier"})
+    return Command(update={"current_step": "issue_classifier"})  # [!code highlight]
 
 
 # Update the resolution_specialist configuration to include these tools
-STAGE_CONFIG["resolution_specialist"]["tools"].extend([
+STEP_CONFIG["resolution_specialist"]["tools"].extend([
     go_back_to_warranty,
     go_back_to_classification
 ])
@@ -536,7 +544,7 @@ RESOLUTION_SPECIALIST_PROMPT = """You are a customer support agent helping with 
 CURRENT STAGE: Resolution
 CUSTOMER INFO: Warranty status is {warranty_status}, issue type is {issue_type}
 
-At this stage, you need to:
+At this step, you need to:
 1. For SOFTWARE issues: provide troubleshooting steps using provide_solution
 2. For HARDWARE issues:
    - If IN WARRANTY: explain warranty repair process using provide_solution
@@ -555,7 +563,7 @@ result = agent.invoke(
     {"messages": [HumanMessage("Actually, I made a mistake - my device is out of warranty")]},
     config
 )
-# Agent will call go_back_to_warranty and restart the warranty verification stage
+# Agent will call go_back_to_warranty and restart the warranty verification step
 ```
 
 ## Complete example
@@ -568,38 +576,35 @@ Here's everything together in a runnable script:
 """
 Customer Support Handoffs Example
 
-This example demonstrates the handoffs pattern for multi-agent systems.
-A single agent dynamically changes its behavior based on the current_stage state,
+This example demonstrates the handoffs pattern.
+A single agent dynamically changes its behavior based on the current_step state,
 creating a state machine for sequential information collection.
 """
 
+import uuid
+
 from langgraph.checkpoint.memory import InMemorySaver
-from langgraph.graph.message import REMOVE_ALL_MESSAGES
-from langgraph.runtime import Runtime
 from langgraph.types import Command
-from typing import Callable
-from typing import Literal
+from typing import Callable, Literal
 from typing_extensions import NotRequired
 
-from langchain.agents import AgentState
-from langchain.agents import create_agent
-from langchain.agents.middleware import before_model, wrap_model_call, ModelRequest, ModelResponse
+from langchain.agents import AgentState, create_agent
+from langchain.agents.middleware import wrap_model_call, ModelRequest, ModelResponse, SummarizationMiddleware
 from langchain.chat_models import init_chat_model
-from langchain.messages import HumanMessage, RemoveMessage
+from langchain.messages import HumanMessage, ToolMessage
 from langchain.tools import tool, ToolRuntime
-from langchain.messages import ToolMessage
 
 model = init_chat_model("anthropic:claude-3-5-sonnet-latest")
 
 
-# Define the possible workflow stages
-SupportStage = Literal["warranty_collector", "issue_classifier", "resolution_specialist"]
+# Define the possible workflow steps
+SupportStep = Literal["warranty_collector", "issue_classifier", "resolution_specialist"]
 
 
 class SupportState(AgentState):
     """State for customer support workflow with handoffs."""
 
-    current_stage: NotRequired[SupportStage]
+    current_step: NotRequired[SupportStep]
     warranty_status: NotRequired[Literal["in_warranty", "out_of_warranty"]]
     issue_type: NotRequired[Literal["hardware", "software"]]
 
@@ -619,7 +624,7 @@ def record_warranty_status(
                 )
             ],
             "warranty_status": status,
-            "current_stage": "issue_classifier",
+            "current_step": "issue_classifier",
         }
     )
 
@@ -639,54 +644,54 @@ def record_issue_type(
                 )
             ],
             "issue_type": issue_type,
-            "current_stage": "resolution_specialist",
+            "current_step": "resolution_specialist",
         }
     )
 
 
 @tool
-def escalate_to_human(reason: str, _runtime: ToolRuntime[None, SupportState]) -> str:
+def escalate_to_human(reason: str) -> str:
     """Escalate the case to a human support specialist."""
     # In a real system, this would create a ticket, notify staff, etc.
     return f"Escalating to human support. Reason: {reason}"
 
 
 @tool
-def provide_solution(solution: str, _runtime: ToolRuntime[None, SupportState]) -> str:
+def provide_solution(solution: str) -> str:
     """Provide a solution to the customer's issue."""
     return f"Solution provided: {solution}"
 
 
-# Define prompts as constants for lazy interpolation
+# Define prompts as constants
 WARRANTY_COLLECTOR_PROMPT = """You are a customer support agent helping with device issues.
 
-CURRENT STAGE: Warranty verification
+CURRENT STEP: Warranty verification
 
-At this stage, you need to:
+At this step, you need to:
 1. Greet the customer warmly
 2. Ask if their device is under warranty
-3. Use record_warranty_status to record their response and move to the next stage
+3. Use record_warranty_status to record their response and move to the next step
 
 Be conversational and friendly. Don't ask multiple questions at once."""
 
 ISSUE_CLASSIFIER_PROMPT = """You are a customer support agent helping with device issues.
 
-CURRENT STAGE: Issue classification
+CURRENT STEP: Issue classification
 CUSTOMER INFO: Warranty status is {warranty_status}
 
-At this stage, you need to:
+At this step, you need to:
 1. Ask the customer to describe their issue
 2. Determine if it's a hardware issue (physical damage, broken parts) or software issue (app crashes, performance)
-3. Use record_issue_type to record the classification and move to the next stage
+3. Use record_issue_type to record the classification and move to the next step
 
 If unclear, ask clarifying questions before classifying."""
 
 RESOLUTION_SPECIALIST_PROMPT = """You are a customer support agent helping with device issues.
 
-CURRENT STAGE: Resolution
+CURRENT STEP: Resolution
 CUSTOMER INFO: Warranty status is {warranty_status}, issue type is {issue_type}
 
-At this stage, you need to:
+At this step, you need to:
 1. For SOFTWARE issues: provide troubleshooting steps using provide_solution
 2. For HARDWARE issues:
    - If IN WARRANTY: explain warranty repair process using provide_solution
@@ -695,8 +700,8 @@ At this stage, you need to:
 Be specific and helpful in your solutions."""
 
 
-# Stage configuration: maps stage name to (prompt_template, tools, required_state)
-STAGE_CONFIG = {
+# Step configuration: maps step name to (prompt, tools, required_state)
+STEP_CONFIG = {
     "warranty_collector": {
         "prompt": WARRANTY_COLLECTOR_PROMPT,
         "tools": [record_warranty_status],
@@ -715,67 +720,36 @@ STAGE_CONFIG = {
 }
 
 
-@before_model
-def scope_messages_to_agent(state: SupportState, runtime: Runtime) -> dict | None:
-    """Keep only recent messages for the current agent."""
-    messages = state["messages"]
-
-    # Keep only last 4-5 messages (2-3 conversation turns)
-    if len(messages) <= 5:
-        return None
-
-    # Keep first message and recent messages
-    first_msg = messages[0]
-    recent_messages = messages[-4:]
-    new_messages = [first_msg] + recent_messages
-
-    return {
-        "messages": [
-            RemoveMessage(id=REMOVE_ALL_MESSAGES),
-            *new_messages
-        ]
-    }
-
-
 @wrap_model_call
-async def apply_stage_config(
+def apply_step_config(
     request: ModelRequest,
     handler: Callable[[ModelRequest], ModelResponse],
 ) -> ModelResponse:
-    """Configure agent behavior based on the current stage."""
-    # Get current stage (defaults to warranty_collector for first interaction)
-    current_stage = request.state.get("current_stage", "warranty_collector")
+    """Configure agent behavior based on the current step."""
+    # Get current step (defaults to warranty_collector for first interaction)
+    current_step = request.state.get("current_step", "warranty_collector")
 
-    # Look up stage configuration
-    stage_config = STAGE_CONFIG[current_stage]
+    # Look up step configuration
+    step_config = STEP_CONFIG[current_step]
 
     # Validate required state exists
-    for key in stage_config["requires"]:
+    for key in step_config["requires"]:
         if request.state.get(key) is None:
-            raise ValueError(f"{key} must be set before reaching {current_stage}")
+            raise ValueError(f"{key} must be set before reaching {current_step}")
 
-    # Build context summary from state
-    context_summary = ""
-    if request.state.get("warranty_status"):
-        context_summary += f"\nPrevious agents collected: Warranty status is {request.state['warranty_status']}"
-    if request.state.get("issue_type"):
-        context_summary += f", issue type is {request.state['issue_type']}"
+    # Format prompt with state values
+    system_prompt = step_config["prompt"].format(**request.state)
 
-    # Format prompt with state values and add context summary
-    system_prompt = stage_config["prompt"].format(**request.state)
-    if context_summary:
-        system_prompt += context_summary
-
-    # Inject system prompt and stage-specific tools
+    # Inject system prompt and step-specific tools
     request = request.override(
         system_prompt=system_prompt,
-        tools=stage_config["tools"],
+        tools=step_config["tools"],
     )
 
-    return await handler(request)
+    return handler(request)
 
 
-# Collect all tools from all agent configurations
+# Collect all tools from all step configurations
 all_tools = [
     record_warranty_status,
     record_issue_type,
@@ -783,13 +757,20 @@ all_tools = [
     escalate_to_human,
 ]
 
-# Create the agent with stage-based configuration
+# Create the agent with step-based configuration and summarization
 agent = create_agent(
     model,
     tools=all_tools,
     state_schema=SupportState,
-    middleware=[apply_stage_config, scope_messages_to_agent],  # Middleware for configuration and message scoping
-    checkpointer=InMemorySaver(),  # Required for state persistence across turns
+    middleware=[
+        apply_step_config,
+        SummarizationMiddleware(
+            model="gpt-4o-mini",
+            trigger=("tokens", 4000),
+            keep=("messages", 10)
+        )
+    ],
+    checkpointer=InMemorySaver(),
 )
 
 
@@ -798,37 +779,30 @@ agent = create_agent(
 # ============================================================================
 
 if __name__ == "__main__":
-    config = {"configurable": {"thread_id": "support-001"}}
+    thread_id = str(uuid.uuid4())
+    config = {"configurable": {"thread_id": thread_id}}
 
-    print("=== Turn 1: Initial Contact ===")
     result = agent.invoke(
         {"messages": [HumanMessage("Hi, my phone screen is cracked")]},
         config
     )
-    print(f"Bot: {result['messages'][-1].content}\n")
 
-    print("=== Turn 2: Warranty Response ===")
     result = agent.invoke(
         {"messages": [HumanMessage("Yes, it's still under warranty")]},
         config
     )
-    print(f"Bot: {result['messages'][-1].content}")
-    print(f"State: current_stage={result.get('current_stage')}, warranty={result.get('warranty_status')}\n")
 
-    print("=== Turn 3: Issue Description ===")
     result = agent.invoke(
         {"messages": [HumanMessage("The screen is physically cracked from dropping it")]},
         config
     )
-    print(f"Bot: {result['messages'][-1].content}")
-    print(f"State: current_stage={result.get('current_stage')}, issue_type={result.get('issue_type')}\n")
 
-    print("=== Turn 4: Resolution ===")
     result = agent.invoke(
         {"messages": [HumanMessage("What should I do?")]},
         config
     )
-    print(f"Bot: {result['messages'][-1].content}\n")
+    for msg in result['messages']:
+        msg.pretty_print()
 ```
 
 </Expandable>

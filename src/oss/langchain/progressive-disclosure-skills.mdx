@@ -87,6 +87,9 @@ This tutorial requires the `langchain` package:
 ```bash pip
 pip install langchain
 ```
+```bash uv
+uv add langchain
+```
 ```bash conda
 conda install langchain -c conda-forge
 ```
@@ -142,9 +145,9 @@ process.env.LANGSMITH_API_KEY = "...";
 </CodeGroup>
 :::
 
-### Components
+### Select an LLM
 
-We will need to select a chat model from LangChain's suite of integrations:
+Select a chat model from LangChain's suite of integrations:
 
 :::python
 <ChatModelTabsPy />
