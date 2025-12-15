@@ -108,7 +108,7 @@ async def decrypt_blob(ctx: EncryptionContext, data: bytes) -> bytes:
     return _get_fernet(ctx).decrypt(data)
 ```
 
-The `ctx.metadata` dict comes from the `X-Encryption-Context` header and is stored alongside encrypted data, so the correct key is used on decryption.
+The `ctx.metadata` dict comes from the `X-Encryption-Context` header and is stored in plaintext alongside encrypted data, so the correct key is used on decryption.
 
 #### JSON encryption (metadata)
 
@@ -263,7 +263,7 @@ This handler runs once per request after authentication. The returned dict becom
 
 ### Passing encryption context
 
-Pass encryption context via the `X-Encryption-Context` header. The context is arbitrary data that you define—you control the schema and can include any fields your encryption logic needs (e.g., `tenant_id`, `key_version`). The context is available in your handlers as `ctx.metadata` and is stored alongside encrypted data for use during decryption.
+Pass encryption context via the `X-Encryption-Context` header. The context is arbitrary data that you define—you control the schema and can include any fields your encryption logic needs (e.g., `tenant_id`, `key_version`). The context is available in your handlers as `ctx.metadata` and is stored in plaintext for use during decryption.
 
 ```python
 import base64
@@ -285,7 +285,7 @@ result = await client.runs.wait(
 ```
 
 <Note>
-The encryption context is stored with encrypted data. On decryption, it's automatically restored—callers don't need to pass the header when reading.
+The encryption context is stored in plaintext. On decryption, it's automatically restored—callers don't need to pass the header when reading.
 </Note>
 
 ### Envelope encryption with AWS Encryption SDK
