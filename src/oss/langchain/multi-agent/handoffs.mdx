@@ -339,8 +339,8 @@ Subgraph handoffs require careful **[context engineering](/oss/langchain/context
 
 :::python
 ```python
+from langchain.messages import AIMessage, ToolMessage
 from langchain.tools import tool, ToolRuntime
-from langchain_core.messages import AIMessage, ToolMessage
 from langgraph.types import Command
 
 @tool
