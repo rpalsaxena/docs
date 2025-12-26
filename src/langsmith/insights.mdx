@@ -185,7 +185,7 @@ The Insights Agent analyzes [threads](https://docs.langchain.com/langsmith/threa
 
 | Variable | Best for | Example |
 | --- | --- | --- |
-| run.* | Access data from the most recent root run (i.e. final turn) in a thread | `{{run.inputs}}` `{{run.outputs}}` `{{run.error}}`|
+| `run.*` | Access data from the most recent root run (i.e. final turn) in a thread | `{{run.inputs}}` `{{run.outputs}}` `{{run.error}}`|
 
 You can also access nested fields using dot notation. For example, the prompt `"Summarize this: {{run.inputs.foo.bar}}"` will include only the "bar" value within the "foo" value of the last run's inputs.
 
