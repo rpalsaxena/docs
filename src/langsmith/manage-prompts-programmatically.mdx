@@ -250,7 +250,7 @@ If you are in a non-Node environment, "includeModel" is not supported for non-Op
 We recommend enabling prompt caching in production environments to reduce latency and API calls. The cache uses a stale-while-revalidate pattern, ensuring your application always gets a fast response while keeping prompts up-to-date in the background.
 </Note>
 
-The LangSmith SDK includes built-in caching for prompts. When enabled, pulled prompts are cached locally, reducing latency and API calls for frequently used prompts.
+The LangSmith SDK includes built-in in-memory caching for prompts. When enabled, pulled prompts are cached in memory, reducing latency and API calls for frequently used prompts. The cache persists for the lifetime of the client instance.
 
 **Requirements:**
 - Python SDK: `langsmith >= 0.5.2`
