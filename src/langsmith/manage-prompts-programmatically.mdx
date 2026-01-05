@@ -268,16 +268,22 @@ Caching is **disabled by default**. When enabled, the default settings are:
 
 ### Enabling the cache
 
+Pass `cache=True` to enable caching with default settings, or pass a `Cache` instance for custom configuration:
+
 <CodeGroup>
 
 ```python Python
-from langsmith import Client
+from langsmith import Client, Cache
 
-client = Client(
-    prompt_cache_enabled=True,
-    prompt_cache_max_size=100,
-    prompt_cache_ttl_seconds=3600,
+# Enable with default settings
+client = Client(cache=True)
+
+# Or configure custom cache settings
+my_cache = Cache(
+    max_size=100,
+    ttl_seconds=3600,
 )
+client = Client(cache=my_cache)
 
 # First pull - fetches from API and caches
 prompt = client.pull_prompt("joke-generator")
@@ -286,19 +292,23 @@ prompt = client.pull_prompt("joke-generator")
 prompt = client.pull_prompt("joke-generator")
 
 # Check cache metrics
-print(f"Cache hits: {client._prompt_cache.metrics.hits}")
-print(f"Cache misses: {client._prompt_cache.metrics.misses}")
-print(f"Hit rate: {client._prompt_cache.metrics.hit_rate:.1%}")
+print(f"Cache hits: {client.cache.metrics.hits}")
+print(f"Cache misses: {client.cache.metrics.misses}")
+print(f"Hit rate: {client.cache.metrics.hit_rate:.1%}")
 ```
 
 ```typescript TypeScript
-import { Client } from "langsmith";
+import { Client, Cache } from "langsmith";
 
-const client = new Client({
-  promptCacheEnabled: true,
-  promptCacheMaxSize: 100,
-  promptCacheTtlSeconds: 3600,
+// Enable with default settings
+const client = new Client({ cache: true });
+
+// Or configure custom cache settings
+const myCache = new Cache({
+  maxSize: 100,
+  ttlSeconds: 3600,
 });
+const client2 = new Client({ cache: myCache });
 
 // First pull - fetches from API and caches
 const prompt = await client.pullPrompt("joke-generator");
@@ -307,20 +317,12 @@ const prompt = await client.pullPrompt("joke-generator");
 const prompt2 = await client.pullPrompt("joke-generator");
 
 // Check cache metrics
-console.log(`Cache hits: ${client.promptCache?.metrics.hits}`);
-console.log(`Cache misses: ${client.promptCache?.metrics.misses}`);
-console.log(`Hit rate: ${(client.promptCache?.hitRate ?? 0 * 100).toFixed(1)}%`);
+console.log(`Cache hits: ${client.cache?.metrics.hits}`);
+console.log(`Cache misses: ${client.cache?.metrics.misses}`);
+console.log(`Hit rate: ${(client.cache?.hitRate ?? 0 * 100).toFixed(1)}%`);
 ```
 
 </CodeGroup>
-
-You can also enable caching via environment variables:
-
-```bash
-export LANGSMITH_PROMPT_CACHE_ENABLED=true
-export LANGSMITH_PROMPT_CACHE_MAX_SIZE=100
-export LANGSMITH_PROMPT_CACHE_TTL_SECONDS=3600
-```
 
 ### Skipping the cache
 
@@ -351,10 +353,10 @@ For environments with limited or no network connectivity, you can pre-populate t
 <CodeGroup>
 
 ```python Python
-from langsmith import Client
+from langsmith import Client, Cache
 
 # Create client with caching enabled
-client = Client(prompt_cache_enabled=True)
+client = Client(cache=True)
 
 # Pull the prompts you need
 client.pull_prompt("prompt-1")
@@ -362,7 +364,7 @@ client.pull_prompt("prompt-2")
 client.pull_prompt("prompt-3")
 
 # Export cache to a file
-client._prompt_cache.dump("prompts_cache.json")
+client.cache.dump("prompts_cache.json")
 client.cleanup()
 ```
 
@@ -370,7 +372,7 @@ client.cleanup()
 import { Client } from "langsmith";
 
 // Create client with caching enabled
-const client = new Client({ promptCacheEnabled: true });
+const client = new Client({ cache: true });
 
 // Pull the prompts you need
 await client.pullPrompt("prompt-1");
@@ -378,7 +380,7 @@ await client.pullPrompt("prompt-2");
 await client.pullPrompt("prompt-3");
 
 // Export cache to a file
-client.promptCache?.dump("prompts_cache.json");
+client.cache?.dump("prompts_cache.json");
 client.cleanup();
 ```
 
@@ -389,42 +391,32 @@ client.cleanup();
 <CodeGroup>
 
 ```python Python
-from langsmith import Client
+from langsmith import Client, Cache
 
-# Load cached prompts with infinite TTL (never expire)
-client = Client(
-    prompt_cache_enabled=True,
-    prompt_cache_ttl_seconds=None,  # Infinite TTL
-    prompt_cache_path="prompts_cache.json",
-)
+# Create cache with infinite TTL (never expire)
+my_cache = Cache(ttl_seconds=None)
+my_cache.load("prompts_cache.json")
+
+client = Client(cache=my_cache)
 
 # Uses cached version without any API calls
 prompt = client.pull_prompt("prompt-1")
 ```
 
 ```typescript TypeScript
-import { Client } from "langsmith";
+import { Client, Cache } from "langsmith";
 
-// Load cached prompts with infinite TTL (never expire)
-const client = new Client({
-  promptCacheEnabled: true,
-  promptCacheTtlSeconds: null,  // Infinite TTL
-  promptCachePath: "prompts_cache.json",
-});
+// Create cache with infinite TTL (never expire)
+const myCache = new Cache({ ttlSeconds: null });
+myCache.load("prompts_cache.json");
+
+const client = new Client({ cache: myCache });
 
 // Uses cached version without any API calls
 const prompt = await client.pullPrompt("prompt-1");
 ```
 
 </CodeGroup>
-
-You can also set these via environment variables:
-
-```bash
-export LANGSMITH_PROMPT_CACHE_ENABLED=true
-export LANGSMITH_PROMPT_CACHE_TTL_SECONDS=  # Empty = infinite TTL
-export LANGSMITH_PROMPT_CACHE_PATH=/path/to/prompts_cache.json
-```
 
 ### Cleanup
 
