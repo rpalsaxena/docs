@@ -136,7 +136,7 @@ One way to decide when to truncate messages is to count the tokens in the messag
 
 
 
-To trim message history in an agent, use @[`createMiddleware`] with a `beforeModel` hook:
+To trim message history in an agent, use [`createMiddleware`](https://reference.langchain.com/javascript/functions/langchain.index.createMiddleware.html) with a `beforeModel` hook:
 
 ```typescript
 import { RemoveMessage } from "@langchain/core/messages";

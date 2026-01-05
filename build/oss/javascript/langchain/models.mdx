@@ -45,6 +45,9 @@ const response = await model.invoke("Why do parrots talk?");
 See [`initChatModel`](https://reference.langchain.com/javascript/functions/langchain.chat_models_universal.initChatModel.html) for more detail, including information on how to pass model [parameters](#parameters).
 
 
+### Supported models
+
+LangChain supports all major model providers, including OpenAI, Anthropic, Google, Azure, AWS Bedrock, and more. Each provider offers a variety of models with different capabilities. For a full list of supported models in LangChain, see the [integrations page](/oss/javascript/integrations/providers/overview).
 
 ### Key methods
 
@@ -550,6 +553,10 @@ Below, we show some common ways you can use tool calling.
 
 Models can be requested to provide their response in a format matching a given schema. This is useful for ensuring the output can be easily parsed and used in subsequent processing. LangChain supports multiple schema types and methods for enforcing structured output.
 
+<Tip>
+    To learn about structured output, see [Structured output](/oss/javascript/langchain/structured-output).
+</Tip>
+
 
 
 <Tabs>
@@ -627,6 +634,8 @@ Models can be requested to provide their response in a format matching a given s
     - **Method parameter**: Some providers support different methods (`'jsonSchema'`, `'functionCalling'`, `'jsonMode'`)
     - **Include raw**: Use [`includeRaw: true`](https://reference.langchain.com/javascript/classes/_langchain_core.language_models_chat_models.BaseChatModel.html#withStructuredOutput) to get both the parsed output and the raw [`AIMessage`](https://reference.langchain.com/javascript/classes/_langchain_core.messages.AIMessage.html)
     - **Validation**: Zod models provide automatic validation, while JSON Schema requires manual validation
+
+    See your [provider's integration page](/oss/javascript/integrations/providers/overview) for supported methods and configuration options.
 </Note>
 
 
@@ -688,19 +697,13 @@ It can be useful to return the raw [`AIMessage`](https://reference.langchain.com
 
 ---
 
-## Supported models
-
-LangChain supports all major model providers, including OpenAI, Anthropic, Google, Azure, AWS Bedrock, and more. Each provider offers a variety of models with different capabilities. For a full list of supported models in LangChain, see the [integrations page](/oss/javascript/integrations/providers/overview).
-
----
-
 ## Advanced topics
 
 ### Model profiles
 
-<Warning> This is a beta feature. The format of model profiles is subject to change. </Warning>
-
-<Info> Model profiles require `langchain>=1.1`. </Info>
+<Info>
+    Model profiles require `langchain>=1.1`.
+</Info>
 
 
 
@@ -755,6 +758,10 @@ Model profile data allow applications to work around model capabilities dynamica
 </Accordion>
 
 
+
+<Warning>
+    Model profiles are a beta feature. The format of a profile is subject to change.
+</Warning>
 
 ### Multimodal
 
@@ -820,7 +827,9 @@ For details, see the [integrations page](/oss/javascript/integrations/providers/
 
 LangChain supports running models locally on your own hardware. This is useful for scenarios where either data privacy is critical, you want to invoke a custom model, or when you want to avoid the costs incurred when using a cloud-based model.
 
-[Ollama](/oss/javascript/integrations/chat/ollama) is one of the easiest ways to run models locally. See the full list of local integrations on the [integrations page](/oss/javascript/integrations/providers/overview).
+[Ollama](/oss/javascript/integrations/chat/ollama) is one of the easiest ways to run chat and embedding models locally.
+
+{/* TODO: whenever we have a better integrations directory, x-ref to that page with a local query filter */}
 
 ### Prompt caching
 
