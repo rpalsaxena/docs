@@ -239,6 +239,7 @@ LINK_MAPS: list[LinkMap] = [
             "SqliteSaver": "langgraph/checkpoints/#langgraph.checkpoint.sqlite.SqliteSaver",
             "JsonPlusSerializer": "langgraph/checkpoints/#langgraph.checkpoint.serde.jsonplus.JsonPlusSerializer",
             "PostgresSaver": "langgraph/checkpoints/#langgraph.checkpoint.postgres.PostgresSaver",
+            "PostgresStore": "langgraph/store/#langgraph.store.postgres.PostgresStore",
             "create_react_agent": "langgraph/agents/#langgraph.prebuilt.chat_agent_executor.create_react_agent",
             "LastValue": "langgraph/channels/#langgraph.channels.LastValue",
             "START": "langgraph/constants/#langgraph.constants.START",
