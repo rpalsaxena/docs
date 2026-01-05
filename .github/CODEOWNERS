@@ -17,3 +17,5 @@
 # and any of its subdirectories.
 /src/langsmith/ @katmayb
 
+# security.txt in `/src/.well-known/`
+/src/.well-known/security.txt @jkennedyvz
