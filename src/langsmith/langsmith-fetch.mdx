@@ -19,18 +19,27 @@ pip install langsmith-fetch
 
 ## Setup
 
-Set your [LangSmith API key](/langsmith/create-account-api-key) and project name:
+1. Set your [LangSmith API key](/langsmith/create-account-api-key):
 
-```bash
-export LANGSMITH_API_KEY=lsv2_...
-export LANGSMITH_PROJECT=your-project-name
-```
+    ```bash
+    export LANGSMITH_API_KEY=lsv2_...
+    ```
 
-The CLI will automatically fetch traces or threads in `LANGSMITH_PROJECT`. Replace `your-project-name` with the name of your LangSmith project (if it doesn't exist, it will be created automatically on first use).
+1. Set your project name:
 
-<Note>
-`langsmith-fetch` only requires the `LANGSMITH_PROJECT` environment variable. It automatically looks up the project UUID and saves both to `~/.langsmith-cli/config.yaml`. By default, you do not need to include the project UUID with `langsmith-fetch`. However, you can override the configured project by specifying [a different project UUID](#override-the-configured-tracing-project) via the `--project-uuid` CLI flag.
-</Note>
+    ```bash
+    export LANGSMITH_PROJECT=your-project-name
+    ```
+
+    The CLI will automatically fetch traces or threads in `LANGSMITH_PROJECT`. Replace `your-project-name` with the name of your LangSmith project (if it doesn't exist, it will be created automatically on first use).
+
+    To find your project UUID, refer to [Find project and trace IDs](#find-project-and-trace-ids).
+
+    When you set the `LANGSMITH_PROJECT` environment variable, `langsmith-fetch` automatically looks up the project UUID and saves both to `~/.langsmith-cli/config.yaml`. By default, you do not need to include the project UUID with `langsmith-fetch`. However, you can override the configured project by specifying [a different project UUID](#override-the-configured-tracing-project) via the `--project-uuid` CLI flag.
+
+    <Note>
+    To fetch a thread, `langsmith-fetch` **requires** a project UUID. Therefore, ensure that the `LANGSMITH_PROJECT` environment variable is set, or specify the `--project-uuid <project-id>` manually when you run [`langsmith-fetch thread <thread-id>`](#fetch-a-trace-or-thread).
+    </Note>
 
 ### Use with a coding agent
 
@@ -44,7 +53,7 @@ Many agents will use the `langsmith-fetch --help` command to understand how to u
 
 ## Find project and trace IDs
 
-In most cases, you won’t need to find IDs manually (the CLI uses your [environment's project name](#setup) and latest traces by default). However, if you want to fetch a specific item by ID, you can find them in the [LangSmith UI](https://smith.langchain.com):
+In most cases, you won’t need to find IDs manually (the CLI uses your [environment's project name](#setup) and latest traces by default). However, if you want to fetch a specific item by ID, you can find the IDs in the [LangSmith UI](https://smith.langchain.com):
 
 - **Project UUID**: Each project has a unique ID (UUID). You can find it in the project's URL or by hovering over <Icon icon="link-simple"/> **ID** next to the project's name. This UUID can be used with the `--project-uuid` flag on CLI commands
 - **Trace ID**: Every trace (single execution) has an ID. In the **Runs** view, click on a specific run to see its Trace ID (copyable from the trace details panel). You can use `langsmith-fetch trace <trace-id>` to retrieve that exact trace if you have the ID.
@@ -124,8 +133,11 @@ You can fetch a single thread or trace with the ID. The command will output to t
 ```bash
 langsmith-fetch trace <trace-id>
 ```
+
+To fetch a thread, `langsmith-fetch thread` also requires a project UUID. Ensure that the [`LANGSMITH_PROJECT` environment variable](#setup) is configured, or use the `--project-uuid` flag to define a thread's project:
+
 ```bash
-langsmith-fetch thread <thread-id>
+langsmith-fetch thread <thread-id> --project-uuid <project-id>
 ```
 
 ![Output from a single trace fetch in default pretty format](/langsmith/images/langsmith-fetch-output-single.png)
@@ -207,6 +219,12 @@ langsmith-fetch traces --project-uuid <project-id> --limit 3
 ```
 
 Running this command will just fetch traces from that project, it will not modify the [LangSmith project](#setup) already configured in `~/.langsmith-cli/config.yaml`.
+
+You may also need to fetch a particular trace in a different project to the configured `LANGSMITH_PROJECT`. You can do this by including a `trace-id` and `project-id` with `langsmith-fetch`:
+
+```bash
+langsmith-fetch trace <trace-id> --project-uuid <project-id>
+```
 
 ### Export to files
 
